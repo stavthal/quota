@@ -1,136 +1,77 @@
 import Foundation
 
-struct CursorStoredCredentials: Codable, Sendable {
-    var accessToken: String
-    var refreshToken: String?
-    var email: String?
-    var membershipType: String?
-}
-
+/// Live Cursor provider. Tokens are read from the Cursor app DB only — never copied into Quota Keychain
+/// (ad-hoc signed builds otherwise spam Keychain ACL prompts).
 public actor CursorProvider: Provider {
     public nonisolated let id: ProviderID = .cursor
     public nonisolated let displayName = "Cursor"
 
-    private let secrets: any SecretsStore
     private let authReader: CursorLocalAuthReader
     private let session: URLSession
     private let clientID = "KbZUR41cY7W6zRSdpSUJ7I7mLYBKOCmB"
+    private var trackingEnabled: Bool
 
     public init(
-        secrets: any SecretsStore,
+        trackingEnabled: Bool,
         authReader: CursorLocalAuthReader = CursorLocalAuthReader(),
         session: URLSession = .shared
     ) {
-        self.secrets = secrets
+        self.trackingEnabled = trackingEnabled
         self.authReader = authReader
         self.session = session
     }
 
     public func authStatus() async -> AuthStatus {
-        if let stored = try? await loadStored() {
-            return .signedIn(accountHint: stored.email ?? stored.membershipType ?? "Cursor")
-        }
-        if let local = try? authReader.read() {
-            return .signedIn(accountHint: local.email ?? "Cursor app (not connected yet)")
-        }
-        return .signedOut
+        guard trackingEnabled else { return .signedOut }
+        guard let local = try? authReader.read() else { return .signedOut }
+        return .signedIn(accountHint: local.email ?? local.membershipType ?? "Cursor")
     }
 
     public func authenticate(using method: AuthMethod) async throws {
         switch method {
-        case .localApp:
-            let local = try authReader.read()
-            try await persist(CursorStoredCredentials(
-                accessToken: local.accessToken,
-                refreshToken: local.refreshToken,
-                email: local.email,
-                membershipType: local.membershipType
-            ))
-        case .sessionToken(let token):
-            try await persist(CursorStoredCredentials(accessToken: token))
+        case .localApp, .sessionToken:
+            _ = try authReader.read()
+            trackingEnabled = true
         }
     }
 
     public func clearAuth() async throws {
-        try await secrets.delete(.cursor)
+        trackingEnabled = false
     }
 
     public func fetchSnapshot() async throws -> UsageSnapshot {
-        var credentials = try await requireCredentials()
-        credentials = try await refreshIfNeeded(credentials)
+        guard trackingEnabled else { throw CursorProviderError.notAuthenticated }
+        var local = try authReader.read()
+        local = try await refreshIfNeeded(local)
 
         do {
-            return try await fetchSummary(with: credentials.accessToken)
+            return try await fetchSummary(with: local.accessToken)
         } catch CursorProviderError.httpStatus(401), CursorProviderError.httpStatus(403) {
-            credentials = try await forceRefresh(credentials)
-            return try await fetchSummary(with: credentials.accessToken)
+            local = try await forceRefresh(local)
+            return try await fetchSummary(with: local.accessToken)
         }
     }
 
     public func healthCheck() async -> ProviderHealth {
         switch await authStatus() {
-        case .signedOut:
-            return .authRequired
-        case .expired, .invalid:
+        case .signedOut, .expired, .invalid:
             return .authRequired
         case .signedIn:
             return .healthy
         }
     }
 
-    // MARK: - Private
-
-    private func requireCredentials() async throws -> CursorStoredCredentials {
-        if let stored = try await loadStored() {
-            return stored
-        }
-        // Auto-bind from the Cursor app if the user never pressed Connect,
-        // or if Keychain still holds a legacy mock token.
-        let local = try authReader.read()
-        let credentials = CursorStoredCredentials(
-            accessToken: local.accessToken,
-            refreshToken: local.refreshToken,
-            email: local.email,
-            membershipType: local.membershipType
-        )
-        try await persist(credentials)
-        return credentials
-    }
-
-    private func loadStored() async throws -> CursorStoredCredentials? {
-        guard let data = try await secrets.get(.cursor), !data.isEmpty else { return nil }
-        do {
-            return try JSONDecoder().decode(CursorStoredCredentials.self, from: data)
-        } catch {
-            // Legacy mock binds stored a raw string, not JSON credentials.
-            try await secrets.delete(.cursor)
-            return nil
-        }
-    }
-
-    private func persist(_ credentials: CursorStoredCredentials) async throws {
-        let data = try JSONEncoder().encode(credentials)
-        try await secrets.set(data, for: .cursor)
-    }
-
-    private func refreshIfNeeded(_ credentials: CursorStoredCredentials) async throws -> CursorStoredCredentials {
+    private func refreshIfNeeded(_ credentials: CursorLocalAuth) async throws -> CursorLocalAuth {
         if let exp = jwtExpiration(credentials.accessToken), exp.timeIntervalSinceNow > 5 * 60 {
             return credentials
         }
         return try await forceRefresh(credentials)
     }
 
-    private func forceRefresh(_ credentials: CursorStoredCredentials) async throws -> CursorStoredCredentials {
-        // Prefer a fresh token from the Cursor app DB when available.
+    private func forceRefresh(_ credentials: CursorLocalAuth) async throws -> CursorLocalAuth {
         if let local = try? authReader.read(), !local.accessToken.isEmpty {
-            var updated = credentials
-            updated.accessToken = local.accessToken
-            updated.refreshToken = local.refreshToken ?? updated.refreshToken
-            updated.email = local.email ?? updated.email
-            updated.membershipType = local.membershipType ?? updated.membershipType
-            try await persist(updated)
-            if let exp = jwtExpiration(updated.accessToken), exp.timeIntervalSinceNow > 5 * 60 {
-                return updated
+            if let exp = jwtExpiration(local.accessToken), exp.timeIntervalSinceNow > 5 * 60 {
+                return local
             }
         }
 
@@ -148,10 +89,7 @@ public actor CursorProvider: Provider {
         ])
 
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw CursorProviderError.transport("Invalid refresh response")
-        }
-        guard http.statusCode == 200 else {
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw CursorProviderError.refreshFailed
         }
 
@@ -164,10 +102,12 @@ public actor CursorProvider: Provider {
             throw CursorProviderError.refreshFailed
         }
 
-        var updated = credentials
-        updated.accessToken = access
-        try await persist(updated)
-        return updated
+        return CursorLocalAuth(
+            accessToken: access,
+            refreshToken: credentials.refreshToken,
+            email: credentials.email,
+            membershipType: credentials.membershipType
+        )
     }
 
     private func fetchSummary(with accessToken: String) async throws -> UsageSnapshot {
@@ -199,9 +139,7 @@ public actor CursorProvider: Provider {
     }
 
     private func workosCookie(from accessToken: String) -> String {
-        if accessToken.contains("%3A%3A") {
-            return accessToken
-        }
+        if accessToken.contains("%3A%3A") { return accessToken }
         if accessToken.contains("::") {
             return accessToken.replacingOccurrences(of: "::", with: "%3A%3A")
         }

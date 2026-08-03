@@ -5,9 +5,9 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var session: AppSession
 
-    @State private var codexToken = ""
     @State private var statusMessage: String?
     @State private var isConnectingCursor = false
+    @State private var isConnectingCodex = false
 
     var body: some View {
         Form {
@@ -17,29 +17,15 @@ struct SettingsView: View {
             }
 
             Section("Alerts") {
-                Toggle(
-                    "Notifications",
-                    isOn: binding(\.notificationsEnabled)
-                )
-                Toggle(
-                    "Sound",
-                    isOn: binding(\.soundEnabled)
-                )
+                Toggle("Notifications", isOn: binding(\.notificationsEnabled))
+                Toggle("Sound", isOn: binding(\.soundEnabled))
                 VStack(alignment: .leading) {
                     Text("Warn at \(Int(session.preferences.warnThreshold * 100))%")
-                    Slider(
-                        value: binding(\.warnThreshold),
-                        in: 0.5...0.95,
-                        step: 0.01
-                    )
+                    Slider(value: binding(\.warnThreshold), in: 0.5...0.95, step: 0.01)
                 }
                 VStack(alignment: .leading) {
                     Text("Critical at \(Int(session.preferences.criticalThreshold * 100))%")
-                    Slider(
-                        value: binding(\.criticalThreshold),
-                        in: 0.55...0.99,
-                        step: 0.01
-                    )
+                    Slider(value: binding(\.criticalThreshold), in: 0.55...0.99, step: 0.01)
                 }
             }
 
@@ -49,7 +35,7 @@ struct SettingsView: View {
 
             Section("About") {
                 Text(
-                    "Quota is local-only. Cursor usage is read from the Cursor app login on this Mac and Cursor’s unofficial usage API. Credentials stay on this Mac except when talking to Cursor."
+                    "Quota is local-only. Cursor reads the Cursor app login; Codex reads ~/.codex/auth.json. Tokens are not copied into the macOS Keychain."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -62,7 +48,8 @@ struct SettingsView: View {
                 Section {
                     Text(statusMessage)
                         .font(.caption)
-                        .foregroundStyle(statusMessageColor)
+                        .foregroundStyle(QuotaTheme.accent)
+                        .textSelection(.enabled)
                 }
             }
         }
@@ -71,91 +58,70 @@ struct SettingsView: View {
         .frame(minWidth: 420, minHeight: 520)
     }
 
-    private var statusMessageColor: Color {
-        if statusMessage?.localizedCaseInsensitiveContains("fail") == true
-            || statusMessage?.localizedCaseInsensitiveContains("error") == true
-            || statusMessage?.localizedCaseInsensitiveContains("could") == true
-        {
-            return QuotaTheme.critical
-        }
-        return QuotaTheme.accent
+    private var cursorRow: some View {
+        providerRow(
+            title: "Cursor",
+            providerID: .cursor,
+            blurb: "Reads your signed-in Cursor desktop session (Auto + API pools).",
+            connecting: isConnectingCursor,
+            connectTitle: "Connect Cursor app",
+            onConnect: connectCursor
+        )
     }
 
-    private var cursorRow: some View {
+    private var codexRow: some View {
+        providerRow(
+            title: "Codex",
+            providerID: .codex,
+            blurb: "Reads ~/.codex/auth.json from Codex CLI (`codex login`).",
+            connecting: isConnectingCodex,
+            connectTitle: "Connect Codex CLI",
+            onConnect: connectCodex
+        )
+    }
+
+    private func providerRow(
+        title: String,
+        providerID: ProviderID,
+        blurb: String,
+        connecting: Bool,
+        connectTitle: String,
+        onConnect: @escaping () -> Void
+    ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Cursor")
+                Text(title)
                 Spacer()
-                Text(authLabel(for: .cursor))
+                Text(authLabel(for: providerID))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Text("Uses your signed-in Cursor desktop session (Auto + API pools).")
+            Text(blurb)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             HStack {
                 Button {
-                    connectCursor()
+                    onConnect()
                 } label: {
-                    if isConnectingCursor {
-                        Text("Connecting…")
-                    } else {
-                        Text("Connect Cursor app")
-                    }
+                    Text(connecting ? "Connecting…" : connectTitle)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isConnectingCursor)
+                .disabled(connecting)
 
                 Button("Disconnect", role: .destructive) {
                     Task {
-                        try? await session.clearAuth(.cursor)
-                        statusMessage = "Cursor disconnected from Quota"
+                        try? await session.clearAuth(providerID)
+                        statusMessage = "\(title) disconnected"
                     }
                 }
                 .buttonStyle(.bordered)
-                .disabled(isConnectingCursor)
+                .disabled(connecting)
             }
-            if let healthError = session.lastErrors[.cursor] {
+            if let healthError = session.lastErrors[providerID] {
                 Text(healthError)
                     .font(.caption2)
                     .foregroundStyle(QuotaTheme.critical)
                     .textSelection(.enabled)
-            }
-        }
-    }
-
-    private var codexRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Codex")
-                Spacer()
-                Text(authLabel(for: .codex))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            SecureField("Session token (mock for now)", text: $codexToken)
-            HStack {
-                Button("Bind") {
-                    Task {
-                        do {
-                            try await session.authenticate(.codex, token: codexToken)
-                            codexToken = ""
-                            statusMessage = "Codex bound"
-                        } catch {
-                            statusMessage = error.localizedDescription
-                        }
-                    }
-                }
-                .buttonStyle(.bordered)
-                .disabled(codexToken.isEmpty)
-
-                Button("Sign out", role: .destructive) {
-                    Task {
-                        try? await session.clearAuth(.codex)
-                        statusMessage = "Codex signed out"
-                    }
-                }
-                .buttonStyle(.bordered)
             }
         }
     }
@@ -167,19 +133,46 @@ struct SettingsView: View {
             defer { isConnectingCursor = false }
             do {
                 try await session.authenticateFromLocalApp(.cursor)
-                if let error = session.lastErrors[.cursor] {
-                    statusMessage = "Connected, but usage fetch failed: \(error)"
-                } else if session.snapshots[.cursor] != nil {
-                    let auto = session.snapshots[.cursor]?.windows.first { $0.kind == .cursorAuto }
-                    let api = session.snapshots[.cursor]?.windows.first { $0.kind == .cursorAPI }
-                    statusMessage =
-                        "Connected. Cursor models \(Int((auto?.utilization ?? 0) * 100))% · API \(Int((api?.utilization ?? 0) * 100))%"
-                } else {
-                    statusMessage = "Connected from Cursor app"
-                }
+                statusMessage = connectedMessage(for: .cursor, title: "Cursor")
             } catch {
                 statusMessage = error.localizedDescription
             }
+        }
+    }
+
+    private func connectCodex() {
+        isConnectingCodex = true
+        statusMessage = "Reading ~/.codex/auth.json…"
+        Task {
+            defer { isConnectingCodex = false }
+            do {
+                try await session.authenticateFromLocalApp(.codex)
+                statusMessage = connectedMessage(for: .codex, title: "Codex")
+            } catch {
+                statusMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func connectedMessage(for id: ProviderID, title: String) -> String {
+        if let error = session.lastErrors[id] {
+            return "Connected, but usage fetch failed: \(error)"
+        }
+        if let snap = session.snapshots[id] {
+            let parts = snap.windows.map { "\(label(for: $0.kind)) \(Int($0.utilization * 100))%" }
+            return "Connected. " + parts.joined(separator: " · ")
+        }
+        return "\(title) connected"
+    }
+
+    private func label(for kind: UsageWindowKind) -> String {
+        switch kind {
+        case .cursorAuto: "Cursor models"
+        case .cursorAPI: "API models"
+        case .fiveHour: "5-hour"
+        case .weekly: "Weekly"
+        case .monthly: "Monthly"
+        case .custom: "Custom"
         }
     }
 

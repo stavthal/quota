@@ -31,7 +31,7 @@ swift test
 
 | Provider | Status |
 |----------|--------|
-| Cursor | Live — auto-reads Cursor app login (Auto + API pools) |
-| Codex | Mock (real adapter next) |
+| Cursor | Live — Cursor app session (Auto + API pools), no Keychain copy |
+| Codex | Live — `~/.codex/auth.json` (5-hour + weekly), no Keychain copy |
 
 See [design spec](docs/superpowers/specs/2026-08-03-ai-usage-menubar-design.md) and [v0.1 plan](docs/superpowers/plans/2026-08-03-quota-v0.1-app-shell.md).

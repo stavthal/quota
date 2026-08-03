@@ -36,12 +36,17 @@ public final class AppSession: ObservableObject {
 
     public static func makeDefault() async throws -> AppSession {
         let store = try UsageStore.onDisk(url: Self.defaultDatabaseURL())
+        // Wipe legacy provider Keychain copies that caused infinite ACL prompts.
         let secrets = KeychainSecretsStore()
+        try? await secrets.delete(.cursor)
+        try? await secrets.delete(.codex)
+
         let preferences = (try? await store.loadPreferences()) ?? .defaults
         let providers: [any Provider] = [
-            CursorProvider(secrets: secrets),
-            MockCodexProvider(secrets: secrets),
+            CursorProvider(trackingEnabled: preferences.cursorTrackingEnabled),
+            CodexProvider(trackingEnabled: preferences.codexTrackingEnabled),
         ]
+
         let session = AppSession(
             providers: providers,
             usageStore: store,
@@ -83,18 +88,18 @@ public final class AppSession: ObservableObject {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        var collected: [UsageSnapshot] = []
-
         for provider in providers {
             do {
                 let status = await provider.authStatus()
                 authStatuses[provider.id] = status
-                guard case .signedIn = status else { continue }
+                guard case .signedIn = status else {
+                    snapshots[provider.id] = nil
+                    continue
+                }
                 let snap = try await provider.fetchSnapshot()
                 try await usageStore.save(snap)
                 snapshots[provider.id] = snap
                 lastErrors.removeValue(forKey: provider.id)
-                collected.append(snap)
             } catch {
                 lastErrors[provider.id] = error.localizedDescription
             }
@@ -120,6 +125,7 @@ public final class AppSession: ObservableObject {
     public func authenticate(_ providerID: ProviderID, token: String) async throws {
         guard let provider = providers.first(where: { $0.id == providerID }) else { return }
         try await provider.authenticate(using: .sessionToken(token))
+        await setProviderTracking(providerID, enabled: true)
         await refreshAuthStatuses()
         await refreshAll()
     }
@@ -127,6 +133,7 @@ public final class AppSession: ObservableObject {
     public func authenticateFromLocalApp(_ providerID: ProviderID) async throws {
         guard let provider = providers.first(where: { $0.id == providerID }) else { return }
         try await provider.authenticate(using: .localApp)
+        await setProviderTracking(providerID, enabled: true)
         await refreshAuthStatuses()
         await refreshAll()
     }
@@ -134,13 +141,25 @@ public final class AppSession: ObservableObject {
     public func clearAuth(_ providerID: ProviderID) async throws {
         guard let provider = providers.first(where: { $0.id == providerID }) else { return }
         try await provider.clearAuth()
+        await setProviderTracking(providerID, enabled: false)
         snapshots[providerID] = nil
+        lastErrors.removeValue(forKey: providerID)
         await refreshAuthStatuses()
         await refreshAll()
     }
 
     public func updatePreferences(_ preferences: QuotaPreferences) async {
         self.preferences = preferences
+        try? await usageStore.savePreferences(preferences)
+    }
+
+    public func setProviderTracking(_ providerID: ProviderID, enabled: Bool) async {
+        switch providerID {
+        case .cursor:
+            preferences.cursorTrackingEnabled = enabled
+        case .codex:
+            preferences.codexTrackingEnabled = enabled
+        }
         try? await usageStore.savePreferences(preferences)
     }
 
