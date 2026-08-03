@@ -17,7 +17,7 @@ final class NotificationService {
 
         for event in events {
             let content = UNMutableNotificationContent()
-            content.title = "Quota · \(event.providerID.rawValue.capitalized)"
+            content.title = "Headroom · \(event.providerID.displayName)"
             content.body =
                 "\(label(for: event.windowKind)) at \(Int(event.utilization * 100))% (\(event.severity.rawValue))"
             if preferences.soundEnabled {
@@ -41,7 +41,7 @@ final class NotificationService {
         case .weekly: "Weekly window"
         case .monthly: "Monthly window"
         case .copilotCredits: "Copilot credits"
-        case .custom: "Usage window"
+        case .custom: "On-demand credits"
         }
     }
 }

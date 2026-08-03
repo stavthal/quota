@@ -46,6 +46,7 @@ public final class AppSession: ObservableObject {
             CursorProvider(trackingEnabled: preferences.cursorTrackingEnabled),
             CodexProvider(trackingEnabled: preferences.codexTrackingEnabled),
             CopilotProvider(trackingEnabled: preferences.copilotTrackingEnabled),
+            GrokProvider(trackingEnabled: preferences.grokTrackingEnabled),
         ]
 
         let session = AppSession(

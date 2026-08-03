@@ -10,10 +10,12 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
     public var cursorTrackingEnabled: Bool
     public var codexTrackingEnabled: Bool
     public var copilotTrackingEnabled: Bool
+    public var grokTrackingEnabled: Bool
 
     public var cursorHidden: Bool
     public var codexHidden: Bool
     public var copilotHidden: Bool
+    public var grokHidden: Bool
 
     public static let defaults = QuotaPreferences()
 
@@ -26,9 +28,11 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         cursorTrackingEnabled: Bool = false,
         codexTrackingEnabled: Bool = false,
         copilotTrackingEnabled: Bool = false,
+        grokTrackingEnabled: Bool = false,
         cursorHidden: Bool = false,
         codexHidden: Bool = false,
-        copilotHidden: Bool = false
+        copilotHidden: Bool = false,
+        grokHidden: Bool = false
     ) {
         self.warnThreshold = warnThreshold
         self.criticalThreshold = criticalThreshold
@@ -38,9 +42,11 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         self.cursorTrackingEnabled = cursorTrackingEnabled
         self.codexTrackingEnabled = codexTrackingEnabled
         self.copilotTrackingEnabled = copilotTrackingEnabled
+        self.grokTrackingEnabled = grokTrackingEnabled
         self.cursorHidden = cursorHidden
         self.codexHidden = codexHidden
         self.copilotHidden = copilotHidden
+        self.grokHidden = grokHidden
     }
 
     public init(from decoder: Decoder) throws {
@@ -53,9 +59,11 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         cursorTrackingEnabled = try container.decodeIfPresent(Bool.self, forKey: .cursorTrackingEnabled) ?? false
         codexTrackingEnabled = try container.decodeIfPresent(Bool.self, forKey: .codexTrackingEnabled) ?? false
         copilotTrackingEnabled = try container.decodeIfPresent(Bool.self, forKey: .copilotTrackingEnabled) ?? false
+        grokTrackingEnabled = try container.decodeIfPresent(Bool.self, forKey: .grokTrackingEnabled) ?? false
         cursorHidden = try container.decodeIfPresent(Bool.self, forKey: .cursorHidden) ?? false
         codexHidden = try container.decodeIfPresent(Bool.self, forKey: .codexHidden) ?? false
         copilotHidden = try container.decodeIfPresent(Bool.self, forKey: .copilotHidden) ?? false
+        grokHidden = try container.decodeIfPresent(Bool.self, forKey: .grokHidden) ?? false
     }
 
     public var thresholds: AlertThresholds {
@@ -67,6 +75,7 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         case .cursor: cursorTrackingEnabled
         case .codex: codexTrackingEnabled
         case .copilot: copilotTrackingEnabled
+        case .grok: grokTrackingEnabled
         }
     }
 
@@ -75,6 +84,7 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         case .cursor: cursorHidden
         case .codex: codexHidden
         case .copilot: copilotHidden
+        case .grok: grokHidden
         }
     }
 
@@ -83,6 +93,7 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         case .cursor: cursorTrackingEnabled = enabled
         case .codex: codexTrackingEnabled = enabled
         case .copilot: copilotTrackingEnabled = enabled
+        case .grok: grokTrackingEnabled = enabled
         }
     }
 
@@ -91,6 +102,7 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         case .cursor: cursorHidden = hidden
         case .codex: codexHidden = hidden
         case .copilot: copilotHidden = hidden
+        case .grok: grokHidden = hidden
         }
     }
 

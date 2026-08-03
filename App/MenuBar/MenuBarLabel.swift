@@ -6,6 +6,6 @@ struct MenuBarLabel: View {
 
     var body: some View {
         Image(systemName: QuotaTheme.symbol(for: session.aggregateSeverity))
-            .accessibilityLabel("Quota \(session.aggregateSeverity.rawValue)")
+            .accessibilityLabel("Headroom \(session.aggregateSeverity.rawValue)")
     }
 }

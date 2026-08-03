@@ -16,7 +16,7 @@ struct QuotaApp: App {
                     )
                 } else if let error = sessionHolder.error {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Quota failed to start")
+                        Text("Headroom failed to start")
                             .font(.headline)
                         Text(error)
                             .font(.caption)
@@ -25,7 +25,7 @@ struct QuotaApp: App {
                     .padding()
                     .frame(width: 280)
                 } else {
-                    ProgressView("Starting Quota…")
+                    ProgressView("Starting Headroom…")
                         .padding()
                         .frame(width: 200)
                 }
@@ -38,7 +38,7 @@ struct QuotaApp: App {
                 MenuBarLabel(session: session)
             } else {
                 Image(systemName: "gauge.with.dots.needle.67percent")
-                    .accessibilityLabel("Quota starting")
+                    .accessibilityLabel("Headroom starting")
             }
         }
         .menuBarExtraStyle(.window)
@@ -48,7 +48,7 @@ struct QuotaApp: App {
             if let session = sessionHolder.session {
                 SettingsView(session: session)
             } else {
-                ProgressView("Starting Quota…")
+                ProgressView("Starting Headroom…")
                     .padding()
                     .frame(width: 420, height: 200)
             }

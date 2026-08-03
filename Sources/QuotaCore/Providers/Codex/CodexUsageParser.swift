@@ -43,27 +43,27 @@ public enum CodexUsageParser {
         var windows: [UsageWindow] = []
 
         if let primary = rate.primaryWindow, let used = primary.usedPercent {
+            let seconds = resolvedWindowSeconds(explicit: primary.limitWindowSeconds, resetAt: primary.resetAt, fetchedAt: fetchedAt, fallback: nil)
             windows.append(
                 UsageWindow(
-                    kind: .fiveHour,
+                    kind: kind(forWindowSeconds: seconds),
                     used: used,
                     limit: 100,
                     unit: .percent,
-                    resetsAt: resetDate(primary.resetAt, fallbackFrom: fetchedAt, seconds: primary.limitWindowSeconds ?? 18_000)
+                    resetsAt: resetDate(primary.resetAt, fallbackFrom: fetchedAt, seconds: seconds ?? 604_800)
                 )
             )
         }
 
         if let secondary = rate.secondaryWindow, let used = secondary.usedPercent {
-            let seconds = secondary.limitWindowSeconds ?? 604_800
-            let kind: UsageWindowKind = seconds >= 600_000 ? .weekly : .monthly
+            let seconds = resolvedWindowSeconds(explicit: secondary.limitWindowSeconds, resetAt: secondary.resetAt, fetchedAt: fetchedAt, fallback: 604_800)
             windows.append(
                 UsageWindow(
-                    kind: kind,
+                    kind: kind(forWindowSeconds: seconds),
                     used: used,
                     limit: 100,
                     unit: .percent,
-                    resetsAt: resetDate(secondary.resetAt, fallbackFrom: fetchedAt, seconds: seconds)
+                    resetsAt: resetDate(secondary.resetAt, fallbackFrom: fetchedAt, seconds: seconds ?? 604_800)
                 )
             )
         }
@@ -85,6 +85,36 @@ public enum CodexUsageParser {
             return Date(timeIntervalSince1970: unix)
         }
         return fallbackFrom.addingTimeInterval(seconds)
+    }
+
+    /// ChatGPT/Codex plans vary — some only expose a weekly window as `primary_window`.
+    /// Classify from duration instead of assuming primary == 5h.
+    private static func kind(forWindowSeconds seconds: Double?) -> UsageWindowKind {
+        guard let seconds else {
+            // Prefer weekly over a fake 5h label when ChatGPT omits duration.
+            return .weekly
+        }
+        if seconds <= 21_600 { // ≤ 6 hours
+            return .fiveHour
+        }
+        if seconds >= 500_000 { // ~6+ days
+            return .weekly
+        }
+        return .monthly
+    }
+
+    private static func resolvedWindowSeconds(
+        explicit: Double?,
+        resetAt: Double?,
+        fetchedAt: Date,
+        fallback: Double?
+    ) -> Double? {
+        if let explicit { return explicit }
+        if let resetAt {
+            let delta = resetAt - fetchedAt.timeIntervalSince1970
+            if delta > 0 { return delta }
+        }
+        return fallback
     }
 }
 

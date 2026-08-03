@@ -50,7 +50,7 @@ struct PopoverView: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Quota")
+                Text("Headroom")
                     .font(.system(.title3, design: .rounded).weight(.semibold))
                 Text("Local AI usage")
                     .font(.caption)
@@ -60,7 +60,7 @@ struct PopoverView: View {
             Image(systemName: QuotaTheme.symbol(for: session.aggregateSeverity))
                 .foregroundStyle(QuotaTheme.color(for: session.aggregateSeverity))
                 .font(.title2)
-                .accessibilityLabel("Quota status \(session.aggregateSeverity.rawValue)")
+                .accessibilityLabel("Headroom status \(session.aggregateSeverity.rawValue)")
         }
     }
 
@@ -98,12 +98,7 @@ private struct ProviderCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Image(providerID.assetIconName)
-                    .resizable()
-                    .renderingMode(.template)
-                    .foregroundStyle(.primary)
-                    .frame(width: 22, height: 22)
-                    .accessibilityHidden(true)
+                ProviderIconView(providerID: providerID, size: 22)
                 Text(providerID.displayName)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
@@ -178,7 +173,7 @@ private struct CompactMeter: View {
         case .weekly: "Week"
         case .monthly: "Month"
         case .copilotCredits: "Credits"
-        case .custom: "Usage"
+        case .custom: "On-demand"
         }
     }
 

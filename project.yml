@@ -28,8 +28,10 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.stavrosthalassinos.Quota
         INFOPLIST_KEY_LSUIElement: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Quota
-        INFOPLIST_KEY_CFBundleName: Quota
+        INFOPLIST_KEY_CFBundleDisplayName: Headroom
+        INFOPLIST_KEY_CFBundleName: Headroom
+        INFOPLIST_KEY_CFBundleIconName: AppIcon
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGN_ENTITLEMENTS: App/Quota.entitlements
         PRODUCT_NAME: Quota

@@ -1,10 +1,10 @@
-# Quota
+# Headroom
 
-Native macOS menu-bar app for glancing at AI subscription limits (Cursor, Codex, and more on the roadmap).
+Native macOS menu-bar app for glancing at remaining AI subscription capacity (Cursor, ChatGPT/Codex, Copilot, Grok).
 
-**Local-only.** Secrets stay in Keychain. Usage history stays in on-device SQLite. No Quota cloud account.
+**Local-only.** Credentials stay on your Mac (vendor apps / CLI). Usage history stays in on-device SQLite. No Headroom cloud account.
 
-> Some future provider integrations will use unofficial or undocumented APIs. They can break when vendors change backends. Credentials never leave your Mac except to the vendor you bind.
+> Some provider integrations use unofficial or undocumented APIs. They can break when vendors change backends. Credentials never leave your Mac except to the vendor you bind.
 
 ## Requirements
 
@@ -32,7 +32,19 @@ swift test
 | Provider | Status |
 |----------|--------|
 | Cursor | Live — Cursor app (Auto + API) |
-| ChatGPT / Codex | Live — `~/.codex/auth.json` (5h + weekly) |
+| ChatGPT / Codex | Live — `~/.codex/auth.json` (windows from API duration: 5h and/or weekly) |
 | GitHub Copilot | Live — `gh api /copilot_internal/user` (AI credits) |
+| Grok | Live — `~/.grok/auth.json` via Grok CLI (`grok login`) → SuperGrok weekly pool |
+
+## Roadmap (auth + providers)
+
+- Today: local vendor sessions / CLIs only (Cursor, ChatGPT/Codex, Copilot, Grok)
+- Next: **OpenCode** credits/subscription adapter
+- Then: optional **API keys** for all providers as an alternate bind path
+- Later: Claude Desktop and more providers
 
 See [design spec](docs/superpowers/specs/2026-08-03-ai-usage-menubar-design.md) and [v0.1 plan](docs/superpowers/plans/2026-08-03-quota-v0.1-app-shell.md).
+
+## Brand
+
+Display name: **Headroom**. Internal module/target remains `Quota` / `QuotaCore` for now (bundle id unchanged so local data stays put).

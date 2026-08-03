@@ -34,7 +34,7 @@ struct SettingsView: View {
 
             Section("About") {
                 Text(
-                    "Quota is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Copilot → `gh` CLI. Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool."
+                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Copilot → `gh` CLI, Grok → ~/.grok/auth.json. Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -55,22 +55,30 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .padding()
         .frame(minWidth: 460, minHeight: 560)
+        .navigationTitle("Headroom Settings")
     }
 
     @ViewBuilder
     private func providerBlock(_ id: ProviderID) -> some View {
+        let tracking = session.preferences.isTrackingEnabled(for: id)
+        let auth = session.authStatuses[id] ?? .signedOut
+        let connected = tracking && isSignedIn(auth)
+        let busy = connecting.contains(id)
+
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                Image(id.assetIconName)
-                    .resizable()
-                    .renderingMode(.template)
-                    .frame(width: 20, height: 20)
+                ProviderIconView(providerID: id, size: 24)
                 Text(id.displayName)
                     .font(.headline)
                 Spacer()
-                Text(authLabel(for: id))
+                connectionBadge(tracking: tracking, auth: auth)
+            }
+
+            if let account = accountHint(auth), tracking {
+                Text(account)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
             }
 
             Text(blurb(for: id))
@@ -88,22 +96,43 @@ struct SettingsView: View {
             )
 
             HStack {
-                Button {
-                    connect(id)
-                } label: {
-                    Text(connecting.contains(id) ? "Connecting…" : "Enable / Connect")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(connecting.contains(id))
+                if connected {
+                    Button {
+                        connect(id)
+                    } label: {
+                        Text(busy ? "Reconnecting…" : "Reconnect")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(busy)
 
-                Button("Disable", role: .destructive) {
-                    Task {
-                        try? await session.clearAuth(id)
-                        statusMessage = "\(id.displayName) disabled"
+                    Button("Disable", role: .destructive) {
+                        Task {
+                            try? await session.clearAuth(id)
+                            statusMessage = "\(id.displayName) disabled"
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(busy)
+                } else {
+                    Button {
+                        connect(id)
+                    } label: {
+                        Text(busy ? "Connecting…" : "Enable / Connect")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(busy)
+
+                    if tracking {
+                        Button("Disable", role: .destructive) {
+                            Task {
+                                try? await session.clearAuth(id)
+                                statusMessage = "\(id.displayName) disabled"
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(busy)
                     }
                 }
-                .buttonStyle(.bordered)
-                .disabled(connecting.contains(id))
             }
 
             if let healthError = session.lastErrors[id] {
@@ -116,6 +145,47 @@ struct SettingsView: View {
         .padding(.vertical, 4)
     }
 
+    private func connectionBadge(tracking: Bool, auth: AuthStatus) -> some View {
+        let label: String
+        let color: Color
+        if !tracking {
+            label = "Disabled"
+            color = .secondary
+        } else {
+            switch auth {
+            case .signedIn:
+                label = "Connected"
+                color = QuotaTheme.accent
+            case .signedOut:
+                label = "Signed out"
+                color = .secondary
+            case .expired:
+                label = "Expired"
+                color = QuotaTheme.warn
+            case .invalid:
+                label = "Invalid"
+                color = QuotaTheme.critical
+            }
+        }
+
+        return Text(label)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(color.opacity(0.14), in: Capsule())
+    }
+
+    private func isSignedIn(_ auth: AuthStatus) -> Bool {
+        if case .signedIn = auth { return true }
+        return false
+    }
+
+    private func accountHint(_ auth: AuthStatus) -> String? {
+        if case .signedIn(let hint) = auth { return hint }
+        return nil
+    }
+
     private func blurb(for id: ProviderID) -> String {
         switch id {
         case .cursor:
@@ -124,6 +194,8 @@ struct SettingsView: View {
             "Reads ~/.codex/auth.json from Codex CLI (`codex login`)."
         case .copilot:
             "Reads Copilot credits via GitHub CLI (`gh auth login`)."
+        case .grok:
+            "Reads ~/.grok/auth.json from Grok CLI (`grok login`) — SuperGrok weekly pool."
         }
     }
 
@@ -156,19 +228,7 @@ struct SettingsView: View {
         case .weekly: "Week"
         case .monthly: "Month"
         case .copilotCredits: "Credits"
-        case .custom: "Usage"
-        }
-    }
-
-    private func authLabel(for id: ProviderID) -> String {
-        if !session.preferences.isTrackingEnabled(for: id) {
-            return "Disabled"
-        }
-        switch session.authStatuses[id] ?? .signedOut {
-        case .signedOut: return "Signed out"
-        case .signedIn(let hint): return hint ?? "Signed in"
-        case .expired: return "Expired"
-        case .invalid: return "Invalid"
+        case .custom: "On-demand"
         }
     }
 
