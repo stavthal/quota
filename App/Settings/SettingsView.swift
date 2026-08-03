@@ -34,7 +34,7 @@ struct SettingsView: View {
 
             Section("About") {
                 Text(
-                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Copilot → `gh` CLI, Grok → ~/.grok/auth.json. Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
+                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Copilot → `gh` CLI, Grok → ~/.grok/auth.json, OpenCode → ~/.local/share/opencode. Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -53,8 +53,8 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .padding()
-        .frame(minWidth: 460, minHeight: 560)
+        .padding(20)
+        .frame(minWidth: 480, minHeight: 560)
         .navigationTitle("Headroom Settings")
     }
 
@@ -196,6 +196,8 @@ struct SettingsView: View {
             "Reads Copilot credits via GitHub CLI (`gh auth login`)."
         case .grok:
             "Reads ~/.grok/auth.json from Grok CLI (`grok login`) — SuperGrok weekly pool."
+        case .opencode:
+            "Reads ~/.local/share/opencode (auth + local DB). Shows OpenCode Go or Zen, plus up to 3 highest-spend backends used inside OpenCode (e.g. OpenRouter). Go caps $12/5h · $30/wk · $60/mo."
         }
     }
 

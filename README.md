@@ -35,12 +35,12 @@ swift test
 | ChatGPT / Codex | Live — `~/.codex/auth.json` (windows from API duration: 5h and/or weekly) |
 | GitHub Copilot | Live — `gh api /copilot_internal/user` (AI credits) |
 | Grok | Live — `~/.grok/auth.json` via Grok CLI (`grok login`) → SuperGrok weekly pool |
+| OpenCode | Live — `~/.local/share/opencode` auth + local SQLite (Go caps when present; Zen spend otherwise) |
 
 ## Roadmap (auth + providers)
 
-- Today: local vendor sessions / CLIs only (Cursor, ChatGPT/Codex, Copilot, Grok)
-- Next: **OpenCode** credits/subscription adapter
-- Then: optional **API keys** for all providers as an alternate bind path
+- Today: local vendor sessions / CLIs (Cursor, ChatGPT/Codex, Copilot, Grok, OpenCode)
+- Next: optional **API keys** for all providers as an alternate bind path
 - Later: Claude Desktop and more providers
 
 See [design spec](docs/superpowers/specs/2026-08-03-ai-usage-menubar-design.md) and [v0.1 plan](docs/superpowers/plans/2026-08-03-quota-v0.1-app-shell.md).

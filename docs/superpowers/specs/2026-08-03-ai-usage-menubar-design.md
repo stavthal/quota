@@ -202,7 +202,7 @@ Contributors add a provider by implementing `Provider`, adding fixtures, and reg
 | **v0.3** | Real **Codex** adapter |
 | **v0.4** | History charts, model breakdown polish, alert tuning |
 | **v0.5** | **Grok CLI** adapter (`~/.grok/auth.json` → SuperGrok weekly pool) |
-| **v0.6** | **OpenCode** adapter (local credits / subscription usage) |
+| **v0.6** | **OpenCode** adapter (`~/.local/share/opencode` auth + local DB; Go caps / Zen spend) |
 | **v0.7** | Optional **API key** auth path for all providers (Cursor/OpenAI/Anthropic/xAI/OpenCode/etc.) alongside local-app/CLI sessions |
 | **v1.0** | Notarized DMG, Homebrew formula, README, About disclosure, contributor guide for adapters |
 | **Post-v1** | Claude Desktop → more providers |
