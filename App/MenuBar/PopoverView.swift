@@ -163,6 +163,8 @@ private struct WindowMeter: View {
 
     private var kindLabel: String {
         switch window.kind {
+        case .cursorAuto: "Cursor models"
+        case .cursorAPI: "API models"
         case .fiveHour: "5-hour"
         case .weekly: "Weekly"
         case .monthly: "Monthly"

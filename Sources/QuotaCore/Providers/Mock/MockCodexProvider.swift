@@ -27,6 +27,8 @@ public actor MockCodexProvider: Provider {
         switch method {
         case .sessionToken(let token):
             try await secrets.set(Data(token.utf8), for: .codex)
+        case .localApp:
+            throw AuthUnsupportedMethodError()
         }
     }
 

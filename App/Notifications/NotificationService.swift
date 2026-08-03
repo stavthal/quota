@@ -35,6 +35,8 @@ final class NotificationService {
 
     private func label(for kind: UsageWindowKind) -> String {
         switch kind {
+        case .cursorAuto: "Cursor models"
+        case .cursorAPI: "API models"
         case .fiveHour: "5-hour window"
         case .weekly: "Weekly window"
         case .monthly: "Monthly window"

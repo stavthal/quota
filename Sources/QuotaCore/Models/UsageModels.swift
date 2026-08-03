@@ -1,6 +1,11 @@
 import Foundation
 
 public enum UsageWindowKind: String, Codable, Sendable, Equatable {
+    /// Cursor Auto + Composer / Cursor-native model pool (billing cycle).
+    case cursorAuto
+    /// Cursor API / “other models” pool (billing cycle).
+    case cursorAPI
+    /// Codex / ChatGPT-style rolling windows (used later).
     case fiveHour
     case weekly
     case monthly

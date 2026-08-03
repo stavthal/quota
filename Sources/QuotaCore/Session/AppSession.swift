@@ -39,7 +39,7 @@ public final class AppSession: ObservableObject {
         let secrets = KeychainSecretsStore()
         let preferences = (try? await store.loadPreferences()) ?? .defaults
         let providers: [any Provider] = [
-            MockCursorProvider(secrets: secrets),
+            CursorProvider(secrets: secrets),
             MockCodexProvider(secrets: secrets),
         ]
         let session = AppSession(
@@ -120,6 +120,13 @@ public final class AppSession: ObservableObject {
     public func authenticate(_ providerID: ProviderID, token: String) async throws {
         guard let provider = providers.first(where: { $0.id == providerID }) else { return }
         try await provider.authenticate(using: .sessionToken(token))
+        await refreshAuthStatuses()
+        await refreshAll()
+    }
+
+    public func authenticateFromLocalApp(_ providerID: ProviderID) async throws {
+        guard let provider = providers.first(where: { $0.id == providerID }) else { return }
+        try await provider.authenticate(using: .localApp)
         await refreshAuthStatuses()
         await refreshAll()
     }

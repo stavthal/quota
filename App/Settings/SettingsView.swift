@@ -6,23 +6,14 @@ struct SettingsView: View {
     @ObservedObject var session: AppSession
     @Environment(\.dismiss) private var dismiss
 
-    @State private var cursorToken = ""
     @State private var codexToken = ""
     @State private var statusMessage: String?
 
     var body: some View {
         Form {
             Section("Providers") {
-                providerBindRow(
-                    title: "Cursor",
-                    providerID: .cursor,
-                    token: $cursorToken
-                )
-                providerBindRow(
-                    title: "Codex",
-                    providerID: .codex,
-                    token: $codexToken
-                )
+                cursorRow
+                codexRow
             }
 
             Section("Alerts") {
@@ -58,7 +49,7 @@ struct SettingsView: View {
 
             Section("About") {
                 Text(
-                    "Quota is local-only. Future live providers may use unofficial APIs that can break when vendors change backends. Credentials stay on this Mac except when talking to the vendor you bind."
+                    "Quota is local-only. Cursor usage is read from the Cursor app login on this Mac and Cursor’s unofficial usage API. Credentials stay on this Mac except when talking to Cursor."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -85,45 +76,74 @@ struct SettingsView: View {
         }
     }
 
-    private func providerBindRow(
-        title: String,
-        providerID: ProviderID,
-        token: Binding<String>
-    ) -> some View {
+    private var cursorRow: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(title)
+                Text("Cursor")
                 Spacer()
-                Text(authLabel(for: providerID))
+                Text(authLabel(for: .cursor))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            SecureField("Session token (mock accepts any)", text: token)
+            Text("Uses your signed-in Cursor desktop session (Auto + API pools).")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             HStack {
-                Button("Bind") {
+                Button("Connect Cursor app") {
                     Task {
                         do {
-                            try await session.authenticate(providerID, token: token.wrappedValue)
-                            token.wrappedValue = ""
-                            statusMessage = "\(title) bound"
+                            try await session.authenticateFromLocalApp(.cursor)
+                            statusMessage = "Cursor connected from local app"
                         } catch {
                             statusMessage = error.localizedDescription
                         }
                     }
                 }
-                .disabled(token.wrappedValue.isEmpty)
-
-                Button("Sign out", role: .destructive) {
+                Button("Disconnect", role: .destructive) {
                     Task {
-                        try? await session.clearAuth(providerID)
-                        statusMessage = "\(title) signed out"
+                        try? await session.clearAuth(.cursor)
+                        statusMessage = "Cursor disconnected from Quota"
                     }
                 }
             }
-            if let healthError = session.lastErrors[providerID] {
+            if let healthError = session.lastErrors[.cursor] {
                 Text(healthError)
                     .font(.caption2)
                     .foregroundStyle(QuotaTheme.critical)
+            }
+        }
+    }
+
+    private var codexRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Codex")
+                Spacer()
+                Text(authLabel(for: .codex))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            SecureField("Session token (mock for now)", text: $codexToken)
+            HStack {
+                Button("Bind") {
+                    Task {
+                        do {
+                            try await session.authenticate(.codex, token: codexToken)
+                            codexToken = ""
+                            statusMessage = "Codex bound"
+                        } catch {
+                            statusMessage = error.localizedDescription
+                        }
+                    }
+                }
+                .disabled(codexToken.isEmpty)
+
+                Button("Sign out", role: .destructive) {
+                    Task {
+                        try? await session.clearAuth(.codex)
+                        statusMessage = "Codex signed out"
+                    }
+                }
             }
         }
     }

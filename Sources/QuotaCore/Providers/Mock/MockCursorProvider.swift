@@ -1,19 +1,28 @@
 import Foundation
 
+/// Test double that returns Cursor-shaped pools (Auto + API), not 5-hour windows.
 public actor MockCursorProvider: Provider {
     public nonisolated let id: ProviderID = .cursor
     public nonisolated let displayName = "Cursor"
 
-    public var utilization: Double
+    public var autoUtilization: Double
+    public var apiUtilization: Double
     private let secrets: any SecretsStore
 
-    public init(utilization: Double = 0.42, secrets: any SecretsStore = InMemorySecretsStore()) {
-        self.utilization = utilization
+    public init(
+        utilization: Double = 0.42,
+        autoUtilization: Double? = nil,
+        apiUtilization: Double? = nil,
+        secrets: any SecretsStore = InMemorySecretsStore()
+    ) {
+        self.autoUtilization = autoUtilization ?? utilization * 0.55
+        self.apiUtilization = apiUtilization ?? utilization
         self.secrets = secrets
     }
 
     public func setUtilization(_ value: Double) {
-        utilization = value
+        autoUtilization = value * 0.55
+        apiUtilization = value
     }
 
     public func authStatus() async -> AuthStatus {
@@ -27,6 +36,8 @@ public actor MockCursorProvider: Provider {
         switch method {
         case .sessionToken(let token):
             try await secrets.set(Data(token.utf8), for: .cursor)
+        case .localApp:
+            try await secrets.set(Data("local-mock".utf8), for: .cursor)
         }
     }
 
@@ -35,29 +46,38 @@ public actor MockCursorProvider: Provider {
     }
 
     public func fetchSnapshot() async throws -> UsageSnapshot {
-        let used = utilization * 100
-        let resetsFive = Date().addingTimeInterval(3 * 3600)
-        let resetsWeek = Date().addingTimeInterval(4 * 24 * 3600)
+        let resets = Date().addingTimeInterval(12 * 24 * 3600)
         return UsageSnapshot(
             providerID: .cursor,
             windows: [
-                UsageWindow(kind: .fiveHour, used: used, limit: 100, unit: .percent, resetsAt: resetsFive),
                 UsageWindow(
-                    kind: .weekly,
-                    used: min(used * 0.7, 100),
+                    kind: .cursorAuto,
+                    used: autoUtilization * 100,
                     limit: 100,
                     unit: .percent,
-                    resetsAt: resetsWeek
+                    resetsAt: resets
+                ),
+                UsageWindow(
+                    kind: .cursorAPI,
+                    used: apiUtilization * 100,
+                    limit: 100,
+                    unit: .percent,
+                    resetsAt: resets
                 ),
             ],
             models: [
                 ModelBreakdown(
-                    modelID: "claude-4-sonnet",
-                    label: "Claude 4 Sonnet",
-                    amount: used * 0.6,
+                    modelID: "composer",
+                    label: "Composer / Auto",
+                    amount: autoUtilization * 100,
                     unit: .percent
                 ),
-                ModelBreakdown(modelID: "gpt-5", label: "GPT-5", amount: used * 0.4, unit: .percent),
+                ModelBreakdown(
+                    modelID: "api-models",
+                    label: "API models",
+                    amount: apiUtilization * 100,
+                    unit: .percent
+                ),
             ]
         )
     }
