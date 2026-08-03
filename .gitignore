@@ -1,0 +1,14 @@
+.DS_Store
+/.build
+/.derivedData
+/Packages
+xcuserdata/
+DerivedData/
+*.xcworkspace/xcuserdata
+Quota.xcodeproj/
+.swiftpm/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+/*.app
+/tools/xcodegen-dist/
+debug-cursor-usage-summary.json
+docs/brand/headroom-icon-1024.png
