@@ -4,8 +4,8 @@ import SwiftUI
 
 struct PopoverView: View {
     @ObservedObject var session: AppSession
-    @Binding var showingSettings: Bool
     let notifications: NotificationService
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -65,7 +65,7 @@ struct PopoverView: View {
             Spacer()
 
             Button("Settings…") {
-                showingSettings = true
+                openSettings()
             }
         }
         .buttonStyle(.borderless)

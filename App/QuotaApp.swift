@@ -4,7 +4,6 @@ import SwiftUI
 @main
 struct QuotaApp: App {
     @StateObject private var sessionHolder = SessionHolder()
-    @State private var showingSettings = false
     private let notifications = NotificationService()
 
     var body: some Scene {
@@ -13,12 +12,8 @@ struct QuotaApp: App {
                 if let session = sessionHolder.session {
                     PopoverView(
                         session: session,
-                        showingSettings: $showingSettings,
                         notifications: notifications
                     )
-                    .sheet(isPresented: $showingSettings) {
-                        SettingsView(session: session)
-                    }
                 } else if let error = sessionHolder.error {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Quota failed to start")
@@ -47,6 +42,17 @@ struct QuotaApp: App {
             }
         }
         .menuBarExtraStyle(.window)
+
+        // Real window — MenuBarExtra sheets dismiss when focus moves (Keychain / network).
+        Settings {
+            if let session = sessionHolder.session {
+                SettingsView(session: session)
+            } else {
+                ProgressView("Starting Quota…")
+                    .padding()
+                    .frame(width: 420, height: 200)
+            }
+        }
     }
 }
 

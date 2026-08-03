@@ -4,10 +4,10 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var session: AppSession
-    @Environment(\.dismiss) private var dismiss
 
     @State private var codexToken = ""
     @State private var statusMessage: String?
+    @State private var isConnectingCursor = false
 
     var body: some View {
         Form {
@@ -62,18 +62,23 @@ struct SettingsView: View {
                 Section {
                     Text(statusMessage)
                         .font(.caption)
-                        .foregroundStyle(QuotaTheme.accent)
+                        .foregroundStyle(statusMessageColor)
                 }
             }
         }
         .formStyle(.grouped)
         .padding()
-        .frame(width: 420, height: 520)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Done") { dismiss() }
-            }
+        .frame(minWidth: 420, minHeight: 520)
+    }
+
+    private var statusMessageColor: Color {
+        if statusMessage?.localizedCaseInsensitiveContains("fail") == true
+            || statusMessage?.localizedCaseInsensitiveContains("error") == true
+            || statusMessage?.localizedCaseInsensitiveContains("could") == true
+        {
+            return QuotaTheme.critical
         }
+        return QuotaTheme.accent
     }
 
     private var cursorRow: some View {
@@ -89,27 +94,32 @@ struct SettingsView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             HStack {
-                Button("Connect Cursor app") {
-                    Task {
-                        do {
-                            try await session.authenticateFromLocalApp(.cursor)
-                            statusMessage = "Cursor connected from local app"
-                        } catch {
-                            statusMessage = error.localizedDescription
-                        }
+                Button {
+                    connectCursor()
+                } label: {
+                    if isConnectingCursor {
+                        Text("Connecting…")
+                    } else {
+                        Text("Connect Cursor app")
                     }
                 }
+                .buttonStyle(.borderedProminent)
+                .disabled(isConnectingCursor)
+
                 Button("Disconnect", role: .destructive) {
                     Task {
                         try? await session.clearAuth(.cursor)
                         statusMessage = "Cursor disconnected from Quota"
                     }
                 }
+                .buttonStyle(.bordered)
+                .disabled(isConnectingCursor)
             }
             if let healthError = session.lastErrors[.cursor] {
                 Text(healthError)
                     .font(.caption2)
                     .foregroundStyle(QuotaTheme.critical)
+                    .textSelection(.enabled)
             }
         }
     }
@@ -136,6 +146,7 @@ struct SettingsView: View {
                         }
                     }
                 }
+                .buttonStyle(.bordered)
                 .disabled(codexToken.isEmpty)
 
                 Button("Sign out", role: .destructive) {
@@ -144,6 +155,30 @@ struct SettingsView: View {
                         statusMessage = "Codex signed out"
                     }
                 }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private func connectCursor() {
+        isConnectingCursor = true
+        statusMessage = "Reading Cursor app session…"
+        Task {
+            defer { isConnectingCursor = false }
+            do {
+                try await session.authenticateFromLocalApp(.cursor)
+                if let error = session.lastErrors[.cursor] {
+                    statusMessage = "Connected, but usage fetch failed: \(error)"
+                } else if session.snapshots[.cursor] != nil {
+                    let auto = session.snapshots[.cursor]?.windows.first { $0.kind == .cursorAuto }
+                    let api = session.snapshots[.cursor]?.windows.first { $0.kind == .cursorAPI }
+                    statusMessage =
+                        "Connected. Cursor models \(Int((auto?.utilization ?? 0) * 100))% · API \(Int((api?.utilization ?? 0) * 100))%"
+                } else {
+                    statusMessage = "Connected from Cursor app"
+                }
+            } catch {
+                statusMessage = error.localizedDescription
             }
         }
     }
