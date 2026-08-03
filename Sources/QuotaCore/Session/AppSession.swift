@@ -9,6 +9,9 @@ public final class AppSession: ObservableObject {
     @Published public private(set) var preferences: QuotaPreferences
     @Published public private(set) var isRefreshing = false
     @Published public private(set) var authStatuses: [ProviderID: AuthStatus] = [:]
+    /// Top backends used inside OpenCode (max 3), shown as separate popover cards.
+    @Published public private(set) var openCodeBackends: [OpenCodeBackendUsage] = []
+    @Published public private(set) var openCodeSubscriptionLabel: String = "OpenCode"
 
     private let providers: [any Provider]
     private let usageStore: UsageStore
@@ -47,6 +50,7 @@ public final class AppSession: ObservableObject {
             CodexProvider(trackingEnabled: preferences.codexTrackingEnabled),
             CopilotProvider(trackingEnabled: preferences.copilotTrackingEnabled),
             GrokProvider(trackingEnabled: preferences.grokTrackingEnabled),
+            OpenCodeProvider(trackingEnabled: preferences.opencodeTrackingEnabled),
         ]
 
         let session = AppSession(
@@ -96,14 +100,32 @@ public final class AppSession: ObservableObject {
                 authStatuses[provider.id] = status
                 guard case .signedIn = status else {
                     snapshots[provider.id] = nil
+                    if provider.id == .opencode {
+                        openCodeBackends = []
+                        openCodeSubscriptionLabel = "OpenCode"
+                    }
                     continue
                 }
-                let snap = try await provider.fetchSnapshot()
-                try await usageStore.save(snap)
-                snapshots[provider.id] = snap
-                lastErrors.removeValue(forKey: provider.id)
+
+                if let openCode = provider as? OpenCodeProvider {
+                    let result = try await openCode.fetchSnapshotAndBackends()
+                    try await usageStore.save(result.snapshot)
+                    snapshots[.opencode] = result.snapshot
+                    openCodeBackends = result.backends
+                    openCodeSubscriptionLabel = result.label
+                    authStatuses[.opencode] = .signedIn(accountHint: result.label)
+                    lastErrors.removeValue(forKey: .opencode)
+                } else {
+                    let snap = try await provider.fetchSnapshot()
+                    try await usageStore.save(snap)
+                    snapshots[provider.id] = snap
+                    lastErrors.removeValue(forKey: provider.id)
+                }
             } catch {
                 lastErrors[provider.id] = error.localizedDescription
+                if provider.id == .opencode {
+                    openCodeBackends = []
+                }
             }
         }
 
@@ -146,6 +168,10 @@ public final class AppSession: ObservableObject {
         await setProviderTracking(providerID, enabled: false)
         snapshots[providerID] = nil
         lastErrors.removeValue(forKey: providerID)
+        if providerID == .opencode {
+            openCodeBackends = []
+            openCodeSubscriptionLabel = "OpenCode"
+        }
         await refreshAuthStatuses()
         await refreshAll()
     }
