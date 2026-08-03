@@ -45,6 +45,7 @@ public final class AppSession: ObservableObject {
         let providers: [any Provider] = [
             CursorProvider(trackingEnabled: preferences.cursorTrackingEnabled),
             CodexProvider(trackingEnabled: preferences.codexTrackingEnabled),
+            CopilotProvider(trackingEnabled: preferences.copilotTrackingEnabled),
         ]
 
         let session = AppSession(
@@ -154,12 +155,12 @@ public final class AppSession: ObservableObject {
     }
 
     public func setProviderTracking(_ providerID: ProviderID, enabled: Bool) async {
-        switch providerID {
-        case .cursor:
-            preferences.cursorTrackingEnabled = enabled
-        case .codex:
-            preferences.codexTrackingEnabled = enabled
-        }
+        preferences.setTracking(providerID, enabled: enabled)
+        try? await usageStore.savePreferences(preferences)
+    }
+
+    public func setProviderHidden(_ providerID: ProviderID, hidden: Bool) async {
+        preferences.setHidden(providerID, hidden: hidden)
         try? await usageStore.savePreferences(preferences)
     }
 

@@ -40,6 +40,7 @@ final class NotificationService {
         case .fiveHour: "5-hour window"
         case .weekly: "Weekly window"
         case .monthly: "Monthly window"
+        case .copilotCredits: "Copilot credits"
         case .custom: "Usage window"
         }
     }

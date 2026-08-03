@@ -19,6 +19,8 @@ targets:
       - path: App
         excludes:
           - "**/*.entitlements"
+    resources:
+      - path: App/Assets.xcassets
     dependencies:
       - package: QuotaCore
         product: QuotaCore

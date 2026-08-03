@@ -1,0 +1,15 @@
+{
+  "login": "stavthal",
+  "copilot_plan": "enterprise",
+  "quota_reset_date_utc": "2026-09-01T00:00:00.000Z",
+  "quota_snapshots": {
+    "premium_interactions": {
+      "percent_remaining": 99.9,
+      "unlimited": false,
+      "credits_used": 1,
+      "remaining": 4998,
+      "entitlement": 5000,
+      "quota_id": "premium_interactions"
+    }
+  }
+}

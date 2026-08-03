@@ -3,7 +3,7 @@ import Foundation
 /// Live Codex provider. Reads `~/.codex/auth.json` only — never stores tokens in Quota Keychain.
 public actor CodexProvider: Provider {
     public nonisolated let id: ProviderID = .codex
-    public nonisolated let displayName = "Codex"
+    public nonisolated let displayName = "ChatGPT"
 
     private let authReader: CodexLocalAuthReader
     private let session: URLSession

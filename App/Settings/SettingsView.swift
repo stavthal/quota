@@ -4,16 +4,15 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var session: AppSession
-
     @State private var statusMessage: String?
-    @State private var isConnectingCursor = false
-    @State private var isConnectingCodex = false
+    @State private var connecting: Set<ProviderID> = []
 
     var body: some View {
         Form {
             Section("Providers") {
-                cursorRow
-                codexRow
+                ForEach(ProviderID.allCases) { id in
+                    providerBlock(id)
+                }
             }
 
             Section("Alerts") {
@@ -35,7 +34,7 @@ struct SettingsView: View {
 
             Section("About") {
                 Text(
-                    "Quota is local-only. Cursor reads the Cursor app login; Codex reads ~/.codex/auth.json. Tokens are not copied into the macOS Keychain."
+                    "Quota is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Copilot → `gh` CLI. Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -55,133 +54,121 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .frame(minWidth: 420, minHeight: 520)
+        .frame(minWidth: 460, minHeight: 560)
     }
 
-    private var cursorRow: some View {
-        providerRow(
-            title: "Cursor",
-            providerID: .cursor,
-            blurb: "Reads your signed-in Cursor desktop session (Auto + API pools).",
-            connecting: isConnectingCursor,
-            connectTitle: "Connect Cursor app",
-            onConnect: connectCursor
-        )
-    }
-
-    private var codexRow: some View {
-        providerRow(
-            title: "Codex",
-            providerID: .codex,
-            blurb: "Reads ~/.codex/auth.json from Codex CLI (`codex login`).",
-            connecting: isConnectingCodex,
-            connectTitle: "Connect Codex CLI",
-            onConnect: connectCodex
-        )
-    }
-
-    private func providerRow(
-        title: String,
-        providerID: ProviderID,
-        blurb: String,
-        connecting: Bool,
-        connectTitle: String,
-        onConnect: @escaping () -> Void
-    ) -> some View {
+    @ViewBuilder
+    private func providerBlock(_ id: ProviderID) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title)
+            HStack(spacing: 10) {
+                Image(id.assetIconName)
+                    .resizable()
+                    .renderingMode(.template)
+                    .frame(width: 20, height: 20)
+                Text(id.displayName)
+                    .font(.headline)
                 Spacer()
-                Text(authLabel(for: providerID))
+                Text(authLabel(for: id))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Text(blurb)
+
+            Text(blurb(for: id))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+
+            Toggle(
+                "Show in menu bar",
+                isOn: Binding(
+                    get: { !session.preferences.isHidden(for: id) },
+                    set: { visible in
+                        Task { await session.setProviderHidden(id, hidden: !visible) }
+                    }
+                )
+            )
+
             HStack {
                 Button {
-                    onConnect()
+                    connect(id)
                 } label: {
-                    Text(connecting ? "Connecting…" : connectTitle)
+                    Text(connecting.contains(id) ? "Connecting…" : "Enable / Connect")
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(connecting)
+                .disabled(connecting.contains(id))
 
-                Button("Disconnect", role: .destructive) {
+                Button("Disable", role: .destructive) {
                     Task {
-                        try? await session.clearAuth(providerID)
-                        statusMessage = "\(title) disconnected"
+                        try? await session.clearAuth(id)
+                        statusMessage = "\(id.displayName) disabled"
                     }
                 }
                 .buttonStyle(.bordered)
-                .disabled(connecting)
+                .disabled(connecting.contains(id))
             }
-            if let healthError = session.lastErrors[providerID] {
+
+            if let healthError = session.lastErrors[id] {
                 Text(healthError)
                     .font(.caption2)
                     .foregroundStyle(QuotaTheme.critical)
                     .textSelection(.enabled)
             }
         }
+        .padding(.vertical, 4)
     }
 
-    private func connectCursor() {
-        isConnectingCursor = true
-        statusMessage = "Reading Cursor app session…"
+    private func blurb(for id: ProviderID) -> String {
+        switch id {
+        case .cursor:
+            "Reads your signed-in Cursor desktop session (Auto + API pools)."
+        case .codex:
+            "Reads ~/.codex/auth.json from Codex CLI (`codex login`)."
+        case .copilot:
+            "Reads Copilot credits via GitHub CLI (`gh auth login`)."
+        }
+    }
+
+    private func connect(_ id: ProviderID) {
+        connecting.insert(id)
+        statusMessage = "Connecting \(id.displayName)…"
         Task {
-            defer { isConnectingCursor = false }
+            defer { connecting.remove(id) }
             do {
-                try await session.authenticateFromLocalApp(.cursor)
-                statusMessage = connectedMessage(for: .cursor, title: "Cursor")
+                try await session.authenticateFromLocalApp(id)
+                if let error = session.lastErrors[id] {
+                    statusMessage = "Connected, but usage fetch failed: \(error)"
+                } else if let snap = session.snapshots[id] {
+                    let parts = snap.windows.map { "\(shortLabel(for: $0.kind)) \(Int($0.utilization * 100))%" }
+                    statusMessage = "\(id.displayName): " + parts.joined(separator: " · ")
+                } else {
+                    statusMessage = "\(id.displayName) connected"
+                }
             } catch {
                 statusMessage = error.localizedDescription
             }
         }
     }
 
-    private func connectCodex() {
-        isConnectingCodex = true
-        statusMessage = "Reading ~/.codex/auth.json…"
-        Task {
-            defer { isConnectingCodex = false }
-            do {
-                try await session.authenticateFromLocalApp(.codex)
-                statusMessage = connectedMessage(for: .codex, title: "Codex")
-            } catch {
-                statusMessage = error.localizedDescription
-            }
-        }
-    }
-
-    private func connectedMessage(for id: ProviderID, title: String) -> String {
-        if let error = session.lastErrors[id] {
-            return "Connected, but usage fetch failed: \(error)"
-        }
-        if let snap = session.snapshots[id] {
-            let parts = snap.windows.map { "\(label(for: $0.kind)) \(Int($0.utilization * 100))%" }
-            return "Connected. " + parts.joined(separator: " · ")
-        }
-        return "\(title) connected"
-    }
-
-    private func label(for kind: UsageWindowKind) -> String {
+    private func shortLabel(for kind: UsageWindowKind) -> String {
         switch kind {
-        case .cursorAuto: "Cursor models"
-        case .cursorAPI: "API models"
-        case .fiveHour: "5-hour"
-        case .weekly: "Weekly"
-        case .monthly: "Monthly"
-        case .custom: "Custom"
+        case .cursorAuto: "Models"
+        case .cursorAPI: "API"
+        case .fiveHour: "5h"
+        case .weekly: "Week"
+        case .monthly: "Month"
+        case .copilotCredits: "Credits"
+        case .custom: "Usage"
         }
     }
 
     private func authLabel(for id: ProviderID) -> String {
+        if !session.preferences.isTrackingEnabled(for: id) {
+            return "Disabled"
+        }
         switch session.authStatuses[id] ?? .signedOut {
-        case .signedOut: "Signed out"
-        case .signedIn(let hint): hint ?? "Signed in"
-        case .expired: "Expired"
-        case .invalid: "Invalid"
+        case .signedOut: return "Signed out"
+        case .signedIn(let hint): return hint ?? "Signed in"
+        case .expired: return "Expired"
+        case .invalid: return "Invalid"
         }
     }
 

@@ -5,10 +5,12 @@ public enum UsageWindowKind: String, Codable, Sendable, Equatable {
     case cursorAuto
     /// Cursor API / “other models” pool (billing cycle).
     case cursorAPI
-    /// Codex / ChatGPT-style rolling windows (used later).
+    /// Codex / ChatGPT-style rolling windows.
     case fiveHour
     case weekly
     case monthly
+    /// GitHub Copilot premium / AI credits pool.
+    case copilotCredits
     case custom
 }
 

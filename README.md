@@ -31,7 +31,8 @@ swift test
 
 | Provider | Status |
 |----------|--------|
-| Cursor | Live — Cursor app session (Auto + API pools), no Keychain copy |
-| Codex | Live — `~/.codex/auth.json` (5-hour + weekly), no Keychain copy |
+| Cursor | Live — Cursor app (Auto + API) |
+| ChatGPT / Codex | Live — `~/.codex/auth.json` (5h + weekly) |
+| GitHub Copilot | Live — `gh api /copilot_internal/user` (AI credits) |
 
 See [design spec](docs/superpowers/specs/2026-08-03-ai-usage-menubar-design.md) and [v0.1 plan](docs/superpowers/plans/2026-08-03-quota-v0.1-app-shell.md).

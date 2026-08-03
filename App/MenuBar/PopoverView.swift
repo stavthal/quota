@@ -1,4 +1,3 @@
-import Charts
 import QuotaCore
 import SwiftUI
 
@@ -7,23 +6,39 @@ struct PopoverView: View {
     let notifications: NotificationService
     @Environment(\.openSettings) private var openSettings
 
+    private var visibleIDs: [ProviderID] {
+        session.preferences.visibleProviderIDs
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
             Divider().opacity(0.35)
-            ForEach(ProviderID.allCases) { id in
-                ProviderRow(
-                    providerID: id,
-                    snapshot: session.snapshots[id],
-                    auth: session.authStatuses[id] ?? .signedOut,
-                    error: session.lastErrors[id]
-                )
+
+            if visibleIDs.isEmpty {
+                Text("All AIs are hidden. Open Settings to show one.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(alignment: .top, spacing: 10) {
+                    ForEach(visibleIDs) { id in
+                        ProviderCard(
+                            providerID: id,
+                            snapshot: session.snapshots[id],
+                            auth: session.authStatuses[id] ?? .signedOut,
+                            error: session.lastErrors[id],
+                            trackingEnabled: session.preferences.isTrackingEnabled(for: id)
+                        )
+                    }
+                }
             }
+
             Divider().opacity(0.35)
             footer
         }
         .padding(16)
-        .frame(width: 320)
+        .frame(width: max(340, CGFloat(max(visibleIDs.count, 1)) * 148 + 32))
         .background(.ultraThinMaterial)
         .task {
             await session.refreshAll()
@@ -45,7 +60,7 @@ struct PopoverView: View {
             Image(systemName: QuotaTheme.symbol(for: session.aggregateSeverity))
                 .foregroundStyle(QuotaTheme.color(for: session.aggregateSeverity))
                 .font(.title2)
-                .accessibilityLabel(accessibilitySummary)
+                .accessibilityLabel("Quota status \(session.aggregateSeverity.rawValue)")
         }
     }
 
@@ -71,104 +86,99 @@ struct PopoverView: View {
         .buttonStyle(.borderless)
         .font(.callout)
     }
-
-    private var accessibilitySummary: String {
-        "Quota status \(session.aggregateSeverity.rawValue)"
-    }
 }
 
-private struct ProviderRow: View {
+private struct ProviderCard: View {
     let providerID: ProviderID
     let snapshot: UsageSnapshot?
     let auth: AuthStatus
     let error: String?
+    let trackingEnabled: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title)
-                    .font(.headline)
-                Spacer()
-                Text(authLabel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Image(providerID.assetIconName)
+                    .resizable()
+                    .renderingMode(.template)
+                    .foregroundStyle(.primary)
+                    .frame(width: 22, height: 22)
+                    .accessibilityHidden(true)
+                Text(providerID.displayName)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
             }
 
             if let error {
                 Text(error)
                     .font(.caption2)
                     .foregroundStyle(QuotaTheme.critical)
-            } else if case .signedOut = auth {
-                Text("Not bound — open Settings")
+                    .lineLimit(3)
+            } else if !trackingEnabled {
+                Text("Off")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Text("Enable in Settings")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } else if case .signedOut = auth {
+                Text("Off")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("Enable in Settings")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             } else if let snapshot {
-                ForEach(snapshot.windows) { window in
-                    WindowMeter(window: window)
+                ForEach(snapshot.windows.prefix(2)) { window in
+                    CompactMeter(window: window)
                 }
-                if !snapshot.models.isEmpty {
-                    Chart(snapshot.models) { model in
-                        BarMark(
-                            x: .value("Amount", model.amount),
-                            y: .value("Model", model.label)
-                        )
-                        .foregroundStyle(QuotaTheme.accent.opacity(0.85))
-                    }
-                    .chartXAxis(.hidden)
-                    .frame(height: CGFloat(snapshot.models.count) * 22)
-                    .accessibilityLabel("Model breakdown")
-                }
+            } else {
+                Text("No data yet")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 2)
-    }
-
-    private var title: String {
-        switch providerID {
-        case .cursor: "Cursor"
-        case .codex: "Codex"
-        }
-    }
-
-    private var authLabel: String {
-        switch auth {
-        case .signedOut: "Signed out"
-        case .signedIn(let hint): hint ?? "Signed in"
-        case .expired: "Expired"
-        case .invalid: "Invalid"
-        }
+        .padding(10)
+        .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
-private struct WindowMeter: View {
+private struct CompactMeter: View {
     let window: UsageWindow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             HStack {
                 Text(kindLabel)
-                    .font(.caption)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
                 Spacer()
-                Text("\(Int(window.utilization * 100))%")
-                    .font(.caption.monospacedDigit())
+                Text(valueLabel)
+                    .font(.caption.monospacedDigit().weight(.medium))
                     .foregroundStyle(meterColor)
             }
             ProgressView(value: window.utilization)
                 .tint(meterColor)
-            Text("Resets \(window.resetsAt.formatted(date: .omitted, time: .shortened))")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
         }
+    }
+
+    private var valueLabel: String {
+        if window.unit == .credits {
+            return "\(Int(window.used))/\(Int(window.limit))"
+        }
+        return "\(Int(window.utilization * 100))%"
     }
 
     private var kindLabel: String {
         switch window.kind {
-        case .cursorAuto: "Cursor models"
-        case .cursorAPI: "API models"
-        case .fiveHour: "5-hour"
-        case .weekly: "Weekly"
-        case .monthly: "Monthly"
-        case .custom: "Custom"
+        case .cursorAuto: "Models"
+        case .cursorAPI: "API"
+        case .fiveHour: "5h"
+        case .weekly: "Week"
+        case .monthly: "Month"
+        case .copilotCredits: "Credits"
+        case .custom: "Usage"
         }
     }
 
