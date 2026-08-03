@@ -84,7 +84,8 @@ public actor CursorProvider: Provider {
         if let stored = try await loadStored() {
             return stored
         }
-        // Auto-bind from the Cursor app if the user never pressed Connect.
+        // Auto-bind from the Cursor app if the user never pressed Connect,
+        // or if Keychain still holds a legacy mock token.
         let local = try authReader.read()
         let credentials = CursorStoredCredentials(
             accessToken: local.accessToken,
@@ -97,8 +98,14 @@ public actor CursorProvider: Provider {
     }
 
     private func loadStored() async throws -> CursorStoredCredentials? {
-        guard let data = try await secrets.get(.cursor) else { return nil }
-        return try JSONDecoder().decode(CursorStoredCredentials.self, from: data)
+        guard let data = try await secrets.get(.cursor), !data.isEmpty else { return nil }
+        do {
+            return try JSONDecoder().decode(CursorStoredCredentials.self, from: data)
+        } catch {
+            // Legacy mock binds stored a raw string, not JSON credentials.
+            try await secrets.delete(.cursor)
+            return nil
+        }
     }
 
     private func persist(_ credentials: CursorStoredCredentials) async throws {
@@ -180,8 +187,15 @@ public actor CursorProvider: Provider {
             throw CursorProviderError.httpStatus(http.statusCode)
         }
 
-        let dto = try JSONDecoder().decode(CursorUsageSummaryDTO.self, from: data)
-        return try CursorUsageSummaryParser.snapshot(from: dto)
+        do {
+            let dto = try JSONDecoder().decode(CursorUsageSummaryDTO.self, from: data)
+            return try CursorUsageSummaryParser.snapshot(from: dto)
+        } catch {
+            let preview = String(data: data.prefix(180), encoding: .utf8) ?? "non-utf8"
+            throw CursorProviderError.transport(
+                "Usage decode failed: \(error.localizedDescription) · \(preview)"
+            )
+        }
     }
 
     private func workosCookie(from accessToken: String) -> String {

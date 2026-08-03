@@ -1,16 +1,16 @@
 import Foundation
 
-public struct CursorUsageSummaryDTO: Codable, Sendable {
+public struct CursorUsageSummaryDTO: Decodable, Sendable {
     public var billingCycleStart: String?
     public var billingCycleEnd: String?
     public var membershipType: String?
     public var individualUsage: IndividualUsageDTO?
 
-    public struct IndividualUsageDTO: Codable, Sendable {
+    public struct IndividualUsageDTO: Decodable, Sendable {
         public var plan: PlanDTO?
     }
 
-    public struct PlanDTO: Codable, Sendable {
+    public struct PlanDTO: Decodable, Sendable {
         public var enabled: Bool?
         public var used: Double?
         public var limit: Double?

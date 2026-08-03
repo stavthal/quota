@@ -10,3 +10,4 @@ Quota.xcodeproj/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 /*.app
 /tools/xcodegen-dist/
+debug-cursor-usage-summary.json
