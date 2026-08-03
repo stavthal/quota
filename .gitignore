@@ -1,0 +1,12 @@
+.DS_Store
+/.build
+/.derivedData
+/Packages
+xcuserdata/
+DerivedData/
+*.xcworkspace/xcuserdata
+Quota.xcodeproj/
+.swiftpm/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+/*.app
+/tools/xcodegen-dist/

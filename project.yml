@@ -1,0 +1,33 @@
+name: Quota
+options:
+  bundleIdPrefix: com.stavrosthalassinos
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+packages:
+  QuotaCore:
+    path: .
+targets:
+  Quota:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+        excludes:
+          - "**/*.entitlements"
+    dependencies:
+      - package: QuotaCore
+        product: QuotaCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.stavrosthalassinos.Quota
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Quota
+        INFOPLIST_KEY_CFBundleName: Quota
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_ENTITLEMENTS: App/Quota.entitlements
+        PRODUCT_NAME: Quota
