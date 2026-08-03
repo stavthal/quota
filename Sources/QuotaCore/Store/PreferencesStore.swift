@@ -1,6 +1,8 @@
 import Foundation
 
 public struct QuotaPreferences: Codable, Sendable, Equatable {
+    public static let maxMenuBarPins = 3
+
     public var warnThreshold: Double
     public var criticalThreshold: Double
     public var notificationsEnabled: Bool
@@ -19,6 +21,9 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
     public var grokHidden: Bool
     public var opencodeHidden: Bool
 
+    /// Ordered pins shown as text beside the menu bar icon (max `maxMenuBarPins`).
+    public var menuBarPins: [MenuBarPin]
+
     public static let defaults = QuotaPreferences()
 
     public init(
@@ -36,7 +41,8 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         codexHidden: Bool = false,
         copilotHidden: Bool = false,
         grokHidden: Bool = false,
-        opencodeHidden: Bool = false
+        opencodeHidden: Bool = false,
+        menuBarPins: [MenuBarPin] = []
     ) {
         self.warnThreshold = warnThreshold
         self.criticalThreshold = criticalThreshold
@@ -53,6 +59,7 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         self.copilotHidden = copilotHidden
         self.grokHidden = grokHidden
         self.opencodeHidden = opencodeHidden
+        self.menuBarPins = Array(menuBarPins.prefix(Self.maxMenuBarPins))
     }
 
     public init(from decoder: Decoder) throws {
@@ -72,6 +79,8 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         copilotHidden = try container.decodeIfPresent(Bool.self, forKey: .copilotHidden) ?? false
         grokHidden = try container.decodeIfPresent(Bool.self, forKey: .grokHidden) ?? false
         opencodeHidden = try container.decodeIfPresent(Bool.self, forKey: .opencodeHidden) ?? false
+        let pins = try container.decodeIfPresent([MenuBarPin].self, forKey: .menuBarPins) ?? []
+        menuBarPins = Array(pins.prefix(Self.maxMenuBarPins))
     }
 
     public var thresholds: AlertThresholds {
@@ -116,6 +125,23 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         case .grok: grokHidden = hidden
         case .opencode: opencodeHidden = hidden
         }
+    }
+
+    public func isMenuBarPinned(_ pin: MenuBarPin) -> Bool {
+        menuBarPins.contains(pin)
+    }
+
+    /// Enables or disables a pin. Enabling is a no-op when already at `maxMenuBarPins`.
+    @discardableResult
+    public mutating func setMenuBarPin(_ pin: MenuBarPin, enabled: Bool) -> Bool {
+        if enabled {
+            guard !menuBarPins.contains(pin) else { return true }
+            guard menuBarPins.count < Self.maxMenuBarPins else { return false }
+            menuBarPins.append(pin)
+            return true
+        }
+        menuBarPins.removeAll { $0 == pin }
+        return true
     }
 
     public var visibleProviderIDs: [ProviderID] {

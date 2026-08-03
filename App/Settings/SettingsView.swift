@@ -15,6 +15,25 @@ struct SettingsView: View {
                 }
             }
 
+            Section {
+                Text(
+                    "Pinned limits appear as text beside the Headroom icon — no click needed. Max \(QuotaPreferences.maxMenuBarPins)."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                let pinCount = session.preferences.menuBarPins.count
+                Text("Pins: \(pinCount)/\(QuotaPreferences.maxMenuBarPins)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(pinCount >= QuotaPreferences.maxMenuBarPins ? QuotaTheme.warn : .secondary)
+
+                ForEach(ProviderID.allCases) { id in
+                    pinToggles(for: id)
+                }
+            } header: {
+                Text("Status item")
+            }
+
             Section("Alerts") {
                 Toggle("Notifications", isOn: binding(\.notificationsEnabled))
                 Toggle("Sound", isOn: binding(\.soundEnabled))
@@ -86,7 +105,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
 
             Toggle(
-                "Show in menu bar",
+                "Show in popover",
                 isOn: Binding(
                     get: { !session.preferences.isHidden(for: id) },
                     set: { visible in
@@ -143,6 +162,44 @@ struct SettingsView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private func pinToggles(for id: ProviderID) -> some View {
+        let tracking = session.preferences.isTrackingEnabled(for: id)
+        let windows = session.snapshots[id]?.windows ?? []
+
+        if tracking, !windows.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    ProviderIconView(providerID: id, size: 16)
+                    Text(id.displayName)
+                        .font(.subheadline.weight(.semibold))
+                }
+                ForEach(windows, id: \.kind) { window in
+                    let pin = MenuBarPin(providerID: id, windowKind: window.kind)
+                    let atCap = session.preferences.menuBarPins.count >= QuotaPreferences.maxMenuBarPins
+                    let pinned = session.preferences.isMenuBarPinned(pin)
+                    Toggle(
+                        "\(shortLabel(for: window.kind)) (\(MenuBarStatusFormatter.valueLabel(for: window)))",
+                        isOn: Binding(
+                            get: { session.preferences.isMenuBarPinned(pin) },
+                            set: { enabled in
+                                var prefs = session.preferences
+                                let ok = prefs.setMenuBarPin(pin, enabled: enabled)
+                                if ok {
+                                    Task { await session.updatePreferences(prefs) }
+                                } else {
+                                    statusMessage = "Status item is full (\(QuotaPreferences.maxMenuBarPins) pins max). Unpin one first."
+                                }
+                            }
+                        )
+                    )
+                    .disabled(!pinned && atCap)
+                }
+            }
+            .padding(.vertical, 2)
+        }
     }
 
     private func connectionBadge(tracking: Bool, auth: AuthStatus) -> some View {
