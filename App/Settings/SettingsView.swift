@@ -36,7 +36,7 @@ struct SettingsView: View {
 
             Section("About") {
                 Text(
-                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Copilot → `gh` CLI, Grok → ~/.grok/auth.json, OpenCode → ~/.local/share/opencode. Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
+                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Copilot → `gh` CLI, Grok → ~/.grok/auth.json, OpenCode → ~/.local/share/opencode, Gemini → Antigravity / `agy` (~/.gemini/antigravity-cli). Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -306,6 +306,8 @@ struct SettingsView: View {
             "Reads ~/.grok/auth.json from Grok CLI (`grok login`) — SuperGrok weekly pool."
         case .opencode:
             "Reads ~/.local/share/opencode (auth + local DB). Shows OpenCode Go or Zen, plus up to 3 highest-spend backends used inside OpenCode (e.g. OpenRouter). Go caps $12/5h · $30/wk · $60/mo."
+        case .gemini:
+            "Reads Antigravity / `agy` OAuth (~/.gemini/antigravity-cli or Antigravity IDE). Shows Gemini Models 5h + weekly pools via Cloud Code Assist."
         }
     }
 
