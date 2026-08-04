@@ -276,18 +276,18 @@ public enum GeminiProviderError: Error, LocalizedError, Sendable, Equatable {
     public var errorDescription: String? {
         switch self {
         case .emptyUsage:
-            "Antigravity returned no usage data"
+            return "Antigravity returned no usage data"
         case .httpStatus(let code):
             if code == 401 || code == 403 {
                 return "Auth expired — sign in to Antigravity or run `agy` login"
             }
             return "Antigravity API HTTP \(code)"
         case .transport(let message):
-            message
+            return message
         case .notAuthenticated:
-            "Gemini is not connected"
+            return "Gemini is not connected"
         case .refreshFailed:
-            "Could not refresh Antigravity OAuth token"
+            return "Could not refresh Antigravity OAuth token"
         }
     }
 }
