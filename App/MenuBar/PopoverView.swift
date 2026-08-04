@@ -1,3 +1,4 @@
+import AppKit
 import QuotaCore
 import SwiftUI
 
@@ -141,6 +142,7 @@ struct PopoverView: View {
 
             Button("Settings…") {
                 openSettings()
+                NSApp.activate()
             }
         }
         .buttonStyle(.borderless)
