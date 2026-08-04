@@ -30,11 +30,11 @@ public enum ProviderID: String, Codable, Sendable, CaseIterable, Identifiable {
         }
     }
 
-    /// Official marks except Cursor are shown as white template icons on a dark plate.
+    /// Official marks except Cursor and Gemini are shown as white template icons on a dark plate.
     public var usesWhiteTintedIcon: Bool {
         switch self {
-        case .cursor: false
-        case .codex, .copilot, .grok, .opencode, .gemini: true
+        case .cursor, .gemini: false
+        case .codex, .copilot, .grok, .opencode: true
         }
     }
 }
