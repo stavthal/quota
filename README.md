@@ -1,6 +1,6 @@
 # Headroom
 
-Native macOS menu-bar app for glancing at remaining AI subscription capacity (Cursor, ChatGPT/Codex, Copilot, Grok).
+Native macOS menu-bar app for glancing at remaining AI subscription capacity (Cursor, ChatGPT/Codex, Copilot, Grok, OpenCode, Gemini/Antigravity).
 
 **Local-only.** Credentials stay on your Mac (vendor apps / CLI). Usage history stays in on-device SQLite. No Headroom cloud account.
 
@@ -36,10 +36,11 @@ swift test
 | GitHub Copilot | Live — `gh api /copilot_internal/user` (AI credits) |
 | Grok | Live — `~/.grok/auth.json` via Grok CLI (`grok login`) → SuperGrok weekly pool |
 | OpenCode | Live — `~/.local/share/opencode` auth + local SQLite (Go caps when present; Zen spend otherwise) |
+| Gemini (Antigravity) | Live — Antigravity / `agy` OAuth (`~/.gemini/antigravity-cli` or IDE) → Cloud Code Assist 5h + weekly |
 
 ## Roadmap (auth + providers)
 
-- Today: local vendor sessions / CLIs (Cursor, ChatGPT/Codex, Copilot, Grok, OpenCode)
+- Today: local vendor sessions / CLIs (Cursor, ChatGPT/Codex, Copilot, Grok, OpenCode, Gemini/Antigravity)
 - Next: optional **API keys** for all providers as an alternate bind path
 - Later: Claude Desktop and more providers
 

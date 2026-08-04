@@ -14,12 +14,14 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
     public var copilotTrackingEnabled: Bool
     public var grokTrackingEnabled: Bool
     public var opencodeTrackingEnabled: Bool
+    public var geminiTrackingEnabled: Bool
 
     public var cursorHidden: Bool
     public var codexHidden: Bool
     public var copilotHidden: Bool
     public var grokHidden: Bool
     public var opencodeHidden: Bool
+    public var geminiHidden: Bool
 
     /// Ordered pins shown as text beside the menu bar icon (max `maxMenuBarPins`).
     public var menuBarPins: [MenuBarPin]
@@ -37,11 +39,13 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         copilotTrackingEnabled: Bool = false,
         grokTrackingEnabled: Bool = false,
         opencodeTrackingEnabled: Bool = false,
+        geminiTrackingEnabled: Bool = false,
         cursorHidden: Bool = false,
         codexHidden: Bool = false,
         copilotHidden: Bool = false,
         grokHidden: Bool = false,
         opencodeHidden: Bool = false,
+        geminiHidden: Bool = false,
         menuBarPins: [MenuBarPin] = []
     ) {
         self.warnThreshold = warnThreshold
@@ -54,11 +58,13 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         self.copilotTrackingEnabled = copilotTrackingEnabled
         self.grokTrackingEnabled = grokTrackingEnabled
         self.opencodeTrackingEnabled = opencodeTrackingEnabled
+        self.geminiTrackingEnabled = geminiTrackingEnabled
         self.cursorHidden = cursorHidden
         self.codexHidden = codexHidden
         self.copilotHidden = copilotHidden
         self.grokHidden = grokHidden
         self.opencodeHidden = opencodeHidden
+        self.geminiHidden = geminiHidden
         self.menuBarPins = Array(menuBarPins.prefix(Self.maxMenuBarPins))
     }
 
@@ -74,11 +80,13 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         copilotTrackingEnabled = try container.decodeIfPresent(Bool.self, forKey: .copilotTrackingEnabled) ?? false
         grokTrackingEnabled = try container.decodeIfPresent(Bool.self, forKey: .grokTrackingEnabled) ?? false
         opencodeTrackingEnabled = try container.decodeIfPresent(Bool.self, forKey: .opencodeTrackingEnabled) ?? false
+        geminiTrackingEnabled = try container.decodeIfPresent(Bool.self, forKey: .geminiTrackingEnabled) ?? false
         cursorHidden = try container.decodeIfPresent(Bool.self, forKey: .cursorHidden) ?? false
         codexHidden = try container.decodeIfPresent(Bool.self, forKey: .codexHidden) ?? false
         copilotHidden = try container.decodeIfPresent(Bool.self, forKey: .copilotHidden) ?? false
         grokHidden = try container.decodeIfPresent(Bool.self, forKey: .grokHidden) ?? false
         opencodeHidden = try container.decodeIfPresent(Bool.self, forKey: .opencodeHidden) ?? false
+        geminiHidden = try container.decodeIfPresent(Bool.self, forKey: .geminiHidden) ?? false
         let pins = try container.decodeIfPresent([MenuBarPin].self, forKey: .menuBarPins) ?? []
         menuBarPins = Array(pins.prefix(Self.maxMenuBarPins))
     }
@@ -94,6 +102,7 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         case .copilot: copilotTrackingEnabled
         case .grok: grokTrackingEnabled
         case .opencode: opencodeTrackingEnabled
+        case .gemini: geminiTrackingEnabled
         }
     }
 
@@ -104,6 +113,7 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         case .copilot: copilotHidden
         case .grok: grokHidden
         case .opencode: opencodeHidden
+        case .gemini: geminiHidden
         }
     }
 
@@ -114,6 +124,7 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         case .copilot: copilotTrackingEnabled = enabled
         case .grok: grokTrackingEnabled = enabled
         case .opencode: opencodeTrackingEnabled = enabled
+        case .gemini: geminiTrackingEnabled = enabled
         }
     }
 
@@ -124,6 +135,7 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         case .copilot: copilotHidden = hidden
         case .grok: grokHidden = hidden
         case .opencode: opencodeHidden = hidden
+        case .gemini: geminiHidden = hidden
         }
     }
 
