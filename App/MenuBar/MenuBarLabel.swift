@@ -16,7 +16,7 @@ struct MenuBarLabel: View {
 
     private var pinnedStatusText: String? {
         MenuBarStatusFormatter.statusText(
-            pins: session.preferences.menuBarPins,
+            pins: session.preferences.orderedMenuBarPins,
             snapshots: session.snapshots
         )
     }

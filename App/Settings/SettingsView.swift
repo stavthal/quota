@@ -9,10 +9,15 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Providers") {
-                ForEach(ProviderID.allCases) { id in
+            Section {
+                ForEach(session.preferences.providerOrder) { id in
                     providerBlock(id)
                 }
+                .onMove(perform: moveProviders)
+            } header: {
+                Text("Providers — drag to reorder")
+            } footer: {
+                Text("This order is used in the popover and for pinned limits in the menu bar.")
             }
 
             statusItemSections
@@ -151,7 +156,7 @@ struct SettingsView: View {
     private var statusItemSections: some View {
         let pinCount = session.preferences.menuBarPins.count
         let atCap = pinCount >= QuotaPreferences.maxMenuBarPins
-        let pinnable = ProviderID.allCases.filter { id in
+        let pinnable = session.preferences.providerOrder.filter { id in
             session.preferences.isTrackingEnabled(for: id)
                 && !(session.snapshots[id]?.windows.isEmpty ?? true)
         }
@@ -204,7 +209,7 @@ struct SettingsView: View {
 
     private var menuBarPreviewText: String {
         MenuBarStatusFormatter.statusText(
-            pins: session.preferences.menuBarPins,
+            pins: session.preferences.orderedMenuBarPins,
             snapshots: session.snapshots
         ) ?? "Icon only"
     }
@@ -342,6 +347,14 @@ struct SettingsView: View {
         case .copilotCredits: "Credits"
         case .custom: "On-demand"
         }
+    }
+
+    private func moveProviders(from source: IndexSet, to destination: Int) {
+        var preferences = session.preferences
+        var providerOrder = preferences.providerOrder
+        providerOrder.move(fromOffsets: source, toOffset: destination)
+        preferences.setProviderOrder(providerOrder)
+        Task { await session.updatePreferences(preferences) }
     }
 
     private func binding(_ keyPath: WritableKeyPath<QuotaPreferences, Bool>) -> Binding<Bool> {
