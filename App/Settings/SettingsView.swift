@@ -6,6 +6,7 @@ struct SettingsView: View {
     @ObservedObject var session: AppSession
     @State private var statusMessage: String?
     @State private var connecting: Set<ProviderID> = []
+    @State private var connectionMessages: [ProviderID: String] = [:]
 
     var body: some View {
         Form {
@@ -36,7 +37,7 @@ struct SettingsView: View {
 
             Section("About") {
                 Text(
-                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Copilot → `gh` CLI, Grok → ~/.grok/auth.json, OpenCode → ~/.local/share/opencode, Gemini → Antigravity / `agy` (~/.gemini/antigravity-cli). Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
+                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Claude Code → ~/.claude/.credentials.json when available, Copilot → `gh` CLI, Grok → ~/.grok/auth.json, OpenCode → ~/.local/share/opencode. Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -137,6 +138,13 @@ struct SettingsView: View {
                 }
             }
 
+            if let connectionMessage = connectionMessages[id] {
+                Text(connectionMessage)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+
             if let healthError = session.lastErrors[id] {
                 Text(healthError)
                     .font(.caption2)
@@ -161,12 +169,26 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Menu bar preview")
                         .font(.body)
-                    Text(menuBarPreviewText)
-                        .font(.system(.caption, design: .rounded).weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .textSelection(.enabled)
+                    if menuBarPreviewGroups.isEmpty {
+                        Text("Icon only")
+                            .font(.system(.caption, design: .rounded).weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        HStack(spacing: 6) {
+                            ForEach(menuBarPreviewGroups) { group in
+                                HStack(spacing: 4) {
+                                    ProviderIconView(providerID: group.providerID, size: 20)
+                                    Text(group.values.joined(separator: " · "))
+                                        .font(.system(.caption2, design: .rounded).weight(.semibold))
+                                        .monospacedDigit()
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 4)
+                                .background(Color.secondary.opacity(0.08), in: Capsule())
+                            }
+                        }
+                    }
                 }
                 Spacer(minLength: 8)
                 Text("\(pinCount)/\(QuotaPreferences.maxMenuBarPins)")
@@ -184,7 +206,7 @@ struct SettingsView: View {
         } header: {
             Text("Status item")
         } footer: {
-            Text("Pinned limits show as text beside the Headroom icon — no click needed. Up to \(QuotaPreferences.maxMenuBarPins).")
+            Text("Provider icons and pinned values show beside the Headroom icon — no click needed. Up to \(QuotaPreferences.maxMenuBarPins).")
         }
 
         if pinnable.isEmpty {
@@ -202,11 +224,11 @@ struct SettingsView: View {
         }
     }
 
-    private var menuBarPreviewText: String {
-        MenuBarStatusFormatter.statusText(
+    private var menuBarPreviewGroups: [MenuBarStatusGroup] {
+        MenuBarStatusFormatter.statusGroups(
             pins: session.preferences.menuBarPins,
             snapshots: session.snapshots
-        ) ?? "Icon only"
+        )
     }
 
     @ViewBuilder
@@ -300,34 +322,37 @@ struct SettingsView: View {
             "Reads your signed-in Cursor desktop session (Auto + API pools)."
         case .codex:
             "Reads ~/.codex/auth.json from Codex CLI (`codex login`)."
+        case .claude:
+            "Guarded compatibility: reads ~/.claude/.credentials.json when Claude Code has made it available. It does not read the Claude Code Keychain item. See docs/provider-onboarding.md."
         case .copilot:
             "Reads Copilot credits via GitHub CLI (`gh auth login`)."
         case .grok:
             "Reads ~/.grok/auth.json from Grok CLI (`grok login`) — SuperGrok weekly pool."
         case .opencode:
             "Reads ~/.local/share/opencode (auth + local DB). Shows OpenCode Go or Zen, plus up to 3 highest-spend backends used inside OpenCode (e.g. OpenRouter). Go caps $12/5h · $30/wk · $60/mo."
-        case .gemini:
-            "Reads Antigravity / `agy` OAuth (~/.gemini/antigravity-cli or Antigravity IDE). Shows Gemini Models 5h + weekly pools via Cloud Code Assist."
         }
     }
 
     private func connect(_ id: ProviderID) {
         connecting.insert(id)
-        statusMessage = "Connecting \(id.displayName)…"
+        connectionMessages[id] = "Connecting \(id.displayName)…"
+        statusMessage = connectionMessages[id]
         Task {
             defer { connecting.remove(id) }
             do {
                 try await session.authenticateFromLocalApp(id)
                 if let error = session.lastErrors[id] {
-                    statusMessage = "Connected, but usage fetch failed: \(error)"
+                    connectionMessages[id] = "Connected, but usage fetch failed: \(error)"
                 } else if let snap = session.snapshots[id] {
                     let parts = snap.windows.map { "\(shortLabel(for: $0.kind)) \(Int($0.utilization * 100))%" }
-                    statusMessage = "\(id.displayName): " + parts.joined(separator: " · ")
+                    connectionMessages[id] = "\(id.displayName): " + parts.joined(separator: " · ")
                 } else {
-                    statusMessage = "\(id.displayName) connected"
+                    connectionMessages[id] = "\(id.displayName) connected"
                 }
+                statusMessage = connectionMessages[id]
             } catch {
-                statusMessage = error.localizedDescription
+                connectionMessages[id] = "\(id.displayName): \(error.localizedDescription)"
+                statusMessage = connectionMessages[id]
             }
         }
     }

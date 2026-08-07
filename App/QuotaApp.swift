@@ -1,84 +1,69 @@
+import AppKit
 import QuotaCore
 import SwiftUI
 
 @main
 struct QuotaApp: App {
-    @StateObject private var sessionHolder = SessionHolder()
-    private let notifications = NotificationService()
+    @NSApplicationDelegateAdaptor(QuotaAppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        MenuBarExtra {
-            Group {
-                if let session = sessionHolder.session {
-                    PopoverView(
-                        session: session,
-                        notifications: notifications
-                    )
-                } else if let error = sessionHolder.error {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Headroom failed to start")
-                            .font(.headline)
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding()
-                    .frame(width: 280)
+        Settings {
+            SettingsRoot(appDelegate: appDelegate)
+        }
+    }
+}
+
+private struct SettingsRoot: View {
+    @ObservedObject var appDelegate: QuotaAppDelegate
+
+    var body: some View {
+        if let session = appDelegate.session {
+            SettingsView(session: session)
+        } else {
+            VStack(spacing: 8) {
+                if let error = appDelegate.error {
+                    Text("Headroom failed to start")
+                        .font(.headline)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 } else {
                     ProgressView("Starting Headroom…")
-                        .padding()
-                        .frame(width: 200)
                 }
             }
-            .task {
-                await sessionHolder.bootstrap()
-            }
-        } label: {
-            if let session = sessionHolder.session {
-                MenuBarLabel(session: session)
-            } else {
-                Image(systemName: "gauge.with.dots.needle.67percent")
-                    .accessibilityLabel("Headroom starting")
-            }
-        }
-        .menuBarExtraStyle(.window)
-
-        // Real window — MenuBarExtra sheets dismiss when focus moves (Keychain / network).
-        Settings {
-            if let session = sessionHolder.session {
-                SettingsView(session: session)
-            } else {
-                ProgressView("Starting Headroom…")
-                    .padding()
-                    .frame(width: 420, height: 200)
-            }
+            .padding()
+            .frame(width: 420, height: 200)
         }
     }
 }
 
 @MainActor
-final class SessionHolder: ObservableObject {
-    @Published var session: AppSession?
-    @Published var error: String?
-    private var didStart = false
+final class QuotaAppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
+    @Published private(set) var session: AppSession?
+    @Published private(set) var error: String?
+    private let notifications = NotificationService()
+    private var statusItemController: StatusItemController?
 
-    func bootstrap() async {
-        guard session == nil, error == nil else {
-            startIfNeeded()
-            return
-        }
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Task { await bootstrap() }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        session?.stop()
+    }
+
+    private func bootstrap() async {
+        guard session == nil, error == nil else { return }
         do {
             let built = try await AppSession.makeDefault()
             session = built
-            startIfNeeded()
+            statusItemController = StatusItemController(
+                session: built,
+                notifications: notifications
+            )
+            built.start()
         } catch {
             self.error = error.localizedDescription
         }
-    }
-
-    private func startIfNeeded() {
-        guard !didStart, let session else { return }
-        didStart = true
-        session.start()
     }
 }

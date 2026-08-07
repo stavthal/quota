@@ -1,5 +1,17 @@
 import Foundation
 
+public struct MenuBarStatusGroup: Sendable, Equatable, Identifiable {
+    public var providerID: ProviderID
+    public var values: [String]
+
+    public var id: ProviderID { providerID }
+
+    public init(providerID: ProviderID, values: [String]) {
+        self.providerID = providerID
+        self.values = values
+    }
+}
+
 /// Builds the compact status-item text for pinned usage windows.
 public enum MenuBarStatusFormatter {
     public static let maxPins = QuotaPreferences.maxMenuBarPins
@@ -20,14 +32,35 @@ public enum MenuBarStatusFormatter {
         return parts.joined(separator: " · ")
     }
 
+    /// Groups pinned values by provider so the menu bar renders one provider icon per group.
+    public static func statusGroups(
+        pins: [MenuBarPin],
+        snapshots: [ProviderID: UsageSnapshot]
+    ) -> [MenuBarStatusGroup] {
+        var groups: [MenuBarStatusGroup] = []
+        for pin in pins.prefix(maxPins) {
+            guard let snapshot = snapshots[pin.providerID],
+                  let window = snapshot.windows.first(where: { $0.kind == pin.windowKind })
+            else { continue }
+
+            let value = valueLabel(for: window)
+            if let index = groups.firstIndex(where: { $0.providerID == pin.providerID }) {
+                groups[index].values.append(value)
+            } else {
+                groups.append(MenuBarStatusGroup(providerID: pin.providerID, values: [value]))
+            }
+        }
+        return groups
+    }
+
     public static func providerCode(for id: ProviderID) -> String {
         switch id {
         case .cursor: "Cur"
         case .codex: "GPT"
+        case .claude: "Cl"
         case .copilot: "Cop"
         case .grok: "Grk"
         case .opencode: "OC"
-        case .gemini: "Gem"
         }
     }
 

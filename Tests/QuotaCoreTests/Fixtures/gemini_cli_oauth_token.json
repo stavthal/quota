@@ -1,9 +1,0 @@
-{
-  "token": {
-    "access_token": "ya29.test-access-token",
-    "refresh_token": "1//test-refresh-token",
-    "token_type": "Bearer",
-    "expiry": "2099-01-01T00:00:00Z"
-  },
-  "email": "user@example.com"
-}
