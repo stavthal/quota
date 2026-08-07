@@ -25,6 +25,8 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
 
     /// Ordered pins shown as text beside the menu bar icon (max `maxMenuBarPins`).
     public var menuBarPins: [MenuBarPin]
+    /// Ordered provider IDs used throughout the app UI and menu bar status item.
+    public var providerOrder: [ProviderID]
 
     public static let defaults = QuotaPreferences()
 
@@ -46,7 +48,8 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         grokHidden: Bool = false,
         opencodeHidden: Bool = false,
         geminiHidden: Bool = false,
-        menuBarPins: [MenuBarPin] = []
+        menuBarPins: [MenuBarPin] = [],
+        providerOrder: [ProviderID] = ProviderID.allCases
     ) {
         self.warnThreshold = warnThreshold
         self.criticalThreshold = criticalThreshold
@@ -66,6 +69,7 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         self.opencodeHidden = opencodeHidden
         self.geminiHidden = geminiHidden
         self.menuBarPins = Array(menuBarPins.prefix(Self.maxMenuBarPins))
+        self.providerOrder = Self.normalizedProviderOrder(providerOrder)
     }
 
     public init(from decoder: Decoder) throws {
@@ -89,6 +93,8 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         geminiHidden = try container.decodeIfPresent(Bool.self, forKey: .geminiHidden) ?? false
         let pins = try container.decodeIfPresent([MenuBarPin].self, forKey: .menuBarPins) ?? []
         menuBarPins = Array(pins.prefix(Self.maxMenuBarPins))
+        let providerOrder = try container.decodeIfPresent([ProviderID].self, forKey: .providerOrder) ?? ProviderID.allCases
+        self.providerOrder = Self.normalizedProviderOrder(providerOrder)
     }
 
     public var thresholds: AlertThresholds {
@@ -143,6 +149,18 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         menuBarPins.contains(pin)
     }
 
+    /// Pins grouped in the same order as their providers appear in the app.
+    public var orderedMenuBarPins: [MenuBarPin] {
+        providerOrder.flatMap { providerID in
+            menuBarPins.filter { $0.providerID == providerID }
+        }
+    }
+
+    /// Updates the provider order while retaining every known provider exactly once.
+    public mutating func setProviderOrder(_ providerOrder: [ProviderID]) {
+        self.providerOrder = Self.normalizedProviderOrder(providerOrder)
+    }
+
     /// Enables or disables a pin. Enabling is a no-op when already at `maxMenuBarPins`.
     @discardableResult
     public mutating func setMenuBarPin(_ pin: MenuBarPin, enabled: Bool) -> Bool {
@@ -157,6 +175,15 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
     }
 
     public var visibleProviderIDs: [ProviderID] {
-        ProviderID.allCases.filter { !isHidden(for: $0) }
+        providerOrder.filter { !isHidden(for: $0) }
+    }
+
+    private static func normalizedProviderOrder(_ providerOrder: [ProviderID]) -> [ProviderID] {
+        let unique = providerOrder.reduce(into: [ProviderID]()) { result, providerID in
+            if !result.contains(providerID) {
+                result.append(providerID)
+            }
+        }
+        return unique + ProviderID.allCases.filter { !unique.contains($0) }
     }
 }

@@ -32,3 +32,19 @@ import Testing
     #expect(loaded.soundEnabled == false)
     #expect(loaded.warnThreshold == 0.7)
 }
+
+@Test func usageStorePersistsProviderOrderAndUsesItForMenuBarPins() async throws {
+    let store = try UsageStore.inMemory()
+    var prefs = QuotaPreferences.defaults
+    prefs.setProviderOrder([.gemini, .cursor])
+    prefs.menuBarPins = [
+        MenuBarPin(providerID: .cursor, windowKind: .cursorAuto),
+        MenuBarPin(providerID: .gemini, windowKind: .fiveHour),
+    ]
+
+    try await store.savePreferences(prefs)
+    let loaded = try await store.loadPreferences()
+
+    #expect(loaded.providerOrder == [.gemini, .cursor, .codex, .copilot, .grok, .opencode])
+    #expect(loaded.orderedMenuBarPins.map(\.providerID) == [.gemini, .cursor])
+}
