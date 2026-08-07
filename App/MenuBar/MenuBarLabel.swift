@@ -1,3 +1,4 @@
+import AppKit
 import QuotaCore
 import SwiftUI
 
@@ -5,15 +6,12 @@ struct MenuBarLabel: View {
     @ObservedObject var session: AppSession
 
     var body: some View {
-        HStack(spacing: 5) {
-            Image(systemName: QuotaTheme.symbol(for: session.aggregateSeverity))
-            if let text = pinnedStatusText {
-                Text(text)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-            }
-        }
-        .accessibilityLabel(accessibilityText)
+        Image(nsImage: NSApplication.shared.applicationIconImage)
+            .resizable()
+            .interpolation(.high)
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 18, height: 18)
+            .accessibilityLabel(accessibilityText)
     }
 
     private var pinnedStatusText: String? {
