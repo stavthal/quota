@@ -48,3 +48,17 @@ import Testing
     #expect(loaded.providerOrder == [.gemini, .cursor, .codex, .claude, .copilot, .grok, .opencode])
     #expect(loaded.orderedMenuBarPins.map(\.providerID) == [.gemini, .cursor])
 }
+
+@Test func preferencesMoveProviderReordersPinnedMenuBarGroups() {
+    var preferences = QuotaPreferences.defaults
+    preferences.menuBarPins = [
+        MenuBarPin(providerID: .cursor, windowKind: .cursorAuto),
+        MenuBarPin(providerID: .gemini, windowKind: .weekly),
+    ]
+
+    let didMove = preferences.moveProvider(from: 6, to: 0)
+
+    #expect(didMove)
+    #expect(preferences.providerOrder.first == .gemini)
+    #expect(preferences.orderedMenuBarPins.map(\.providerID) == [.gemini, .cursor])
+}

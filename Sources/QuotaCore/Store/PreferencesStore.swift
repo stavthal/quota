@@ -173,6 +173,18 @@ public struct QuotaPreferences: Codable, Sendable, Equatable {
         self.providerOrder = Self.normalizedProviderOrder(providerOrder)
     }
 
+    /// Moves a provider to an explicit position in the persisted display order.
+    @discardableResult
+    public mutating func moveProvider(from sourceIndex: Int, to destinationIndex: Int) -> Bool {
+        guard providerOrder.indices.contains(sourceIndex),
+              providerOrder.indices.contains(destinationIndex),
+              sourceIndex != destinationIndex
+        else { return false }
+        let providerID = providerOrder.remove(at: sourceIndex)
+        providerOrder.insert(providerID, at: destinationIndex)
+        return true
+    }
+
     /// Enables or disables a pin. Enabling is a no-op when already at `maxMenuBarPins`.
     @discardableResult
     public mutating func setMenuBarPin(_ pin: MenuBarPin, enabled: Bool) -> Bool {

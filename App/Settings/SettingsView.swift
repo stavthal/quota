@@ -15,7 +15,7 @@ struct SettingsView: View {
                 }
                 .onMove(perform: moveProviders)
             } header: {
-                Text("Providers — drag to reorder")
+                Text("Providers — use arrows or drag to reorder")
             } footer: {
                 Text("This order is used in the popover and for pinned limits in the menu bar.")
             }
@@ -71,6 +71,8 @@ struct SettingsView: View {
         let auth = session.authStatuses[id] ?? .signedOut
         let connected = tracking && isSignedIn(auth)
         let busy = connecting.contains(id)
+        let index = session.preferences.providerOrder.firstIndex(of: id) ?? 0
+        let lastIndex = session.preferences.providerOrder.count - 1
 
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
@@ -78,6 +80,25 @@ struct SettingsView: View {
                 Text(id.displayName)
                     .font(.headline)
                 Spacer()
+                HStack(spacing: 2) {
+                    Button {
+                        moveProvider(id, by: -1)
+                    } label: {
+                        Image(systemName: "chevron.up")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(index == 0)
+                    .accessibilityLabel("Move \(id.displayName) up")
+
+                    Button {
+                        moveProvider(id, by: 1)
+                    } label: {
+                        Image(systemName: "chevron.down")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(index == lastIndex)
+                    .accessibilityLabel("Move \(id.displayName) down")
+                }
                 connectionBadge(tracking: tracking, auth: auth)
             }
 
@@ -370,6 +391,13 @@ struct SettingsView: View {
         var providerOrder = preferences.providerOrder
         providerOrder.move(fromOffsets: source, toOffset: destination)
         preferences.setProviderOrder(providerOrder)
+        Task { await session.updatePreferences(preferences) }
+    }
+
+    private func moveProvider(_ providerID: ProviderID, by offset: Int) {
+        guard let sourceIndex = session.preferences.providerOrder.firstIndex(of: providerID) else { return }
+        var preferences = session.preferences
+        guard preferences.moveProvider(from: sourceIndex, to: sourceIndex + offset) else { return }
         Task { await session.updatePreferences(preferences) }
     }
 
