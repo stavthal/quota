@@ -41,7 +41,7 @@ struct SettingsView: View {
 
             Section("About") {
                 Text(
-                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Copilot → `gh` CLI, Grok → ~/.grok/auth.json, OpenCode → ~/.local/share/opencode, Gemini → Antigravity / `agy` (~/.gemini/antigravity-cli). Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
+                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Claude Code → ~/.claude/.credentials.json, Copilot → `gh` CLI, Grok → ~/.grok/auth.json, OpenCode → ~/.local/share/opencode, Gemini → Antigravity / `agy` (~/.gemini/antigravity-cli). Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -166,12 +166,26 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Menu bar preview")
                         .font(.body)
-                    Text(menuBarPreviewText)
-                        .font(.system(.caption, design: .rounded).weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .textSelection(.enabled)
+                    if menuBarPreviewGroups.isEmpty {
+                        Text("Icon only")
+                            .font(.system(.caption, design: .rounded).weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        HStack(spacing: 6) {
+                            ForEach(menuBarPreviewGroups) { group in
+                                HStack(spacing: 4) {
+                                    ProviderIconView(providerID: group.providerID, size: 20)
+                                    Text(group.values.joined(separator: " · "))
+                                        .font(.system(.caption2, design: .rounded).weight(.semibold))
+                                        .monospacedDigit()
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 4)
+                                .background(Color.secondary.opacity(0.08), in: Capsule())
+                            }
+                        }
+                    }
                 }
                 Spacer(minLength: 8)
                 Text("\(pinCount)/\(QuotaPreferences.maxMenuBarPins)")
@@ -189,7 +203,7 @@ struct SettingsView: View {
         } header: {
             Text("Status item")
         } footer: {
-            Text("Pinned limits show as text beside the Headroom icon — no click needed. Up to \(QuotaPreferences.maxMenuBarPins).")
+            Text("Provider icons and pinned values show beside the Headroom icon — no click needed. Up to \(QuotaPreferences.maxMenuBarPins).")
         }
 
         if pinnable.isEmpty {
@@ -207,11 +221,11 @@ struct SettingsView: View {
         }
     }
 
-    private var menuBarPreviewText: String {
-        MenuBarStatusFormatter.statusText(
+    private var menuBarPreviewGroups: [MenuBarStatusGroup] {
+        MenuBarStatusFormatter.statusGroups(
             pins: session.preferences.orderedMenuBarPins,
             snapshots: session.snapshots
-        ) ?? "Icon only"
+        )
     }
 
     @ViewBuilder
@@ -305,6 +319,8 @@ struct SettingsView: View {
             "Reads your signed-in Cursor desktop session (Auto + API pools)."
         case .codex:
             "Reads ~/.codex/auth.json from Codex CLI (`codex login`)."
+        case .claude:
+            "Reads your Claude Code session from ~/.claude/.credentials.json."
         case .copilot:
             "Reads Copilot credits via GitHub CLI (`gh auth login`)."
         case .grok:

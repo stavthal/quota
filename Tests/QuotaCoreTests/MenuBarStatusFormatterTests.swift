@@ -27,6 +27,36 @@ import Testing
     #expect(text == "Cur·M 62% · GPT·5h 41%")
 }
 
+@Test func menuBarStatusFormatterGroupsPinnedValuesUnderOneProviderIcon() {
+    let resets = Date().addingTimeInterval(3600)
+    let snapshots: [ProviderID: UsageSnapshot] = [
+        .cursor: UsageSnapshot(
+            providerID: .cursor,
+            windows: [
+                UsageWindow(kind: .cursorAuto, used: 62, limit: 100, unit: .percent, resetsAt: resets),
+                UsageWindow(kind: .cursorAPI, used: 10, limit: 100, unit: .percent, resetsAt: resets),
+            ]
+        ),
+        .codex: UsageSnapshot(
+            providerID: .codex,
+            windows: [
+                UsageWindow(kind: .weekly, used: 41, limit: 100, unit: .percent, resetsAt: resets),
+            ]
+        ),
+    ]
+    let pins = [
+        MenuBarPin(providerID: .cursor, windowKind: .cursorAuto),
+        MenuBarPin(providerID: .cursor, windowKind: .cursorAPI),
+        MenuBarPin(providerID: .codex, windowKind: .weekly),
+    ]
+
+    let groups = MenuBarStatusFormatter.statusGroups(pins: pins, snapshots: snapshots)
+
+    #expect(groups.map(\.providerID) == [.cursor, .codex])
+    #expect(groups[0].values == ["62%", "10%"])
+    #expect(groups[1].values == ["41%"])
+}
+
 @Test func menuBarStatusFormatterSkipsMissingWindows() {
     let pins = [MenuBarPin(providerID: .grok, windowKind: .weekly)]
     let text = MenuBarStatusFormatter.statusText(pins: pins, snapshots: [:])
@@ -75,4 +105,17 @@ import Testing
     try await store.savePreferences(prefs)
     let loaded = try await store.loadPreferences()
     #expect(loaded.menuBarPins == prefs.menuBarPins)
+}
+
+@Test func quotaPreferencesKeepsGeminiPinsDuringLegacyDecode() throws {
+    let data = Data(
+        #"{"menuBarPins":[{"providerID":"gemini","windowKind":"weekly"},{"providerID":"cursor","windowKind":"cursorAuto"}]}"#.utf8
+    )
+
+    let preferences = try JSONDecoder().decode(QuotaPreferences.self, from: data)
+
+    #expect(preferences.menuBarPins == [
+        MenuBarPin(providerID: .gemini, windowKind: .weekly),
+        MenuBarPin(providerID: .cursor, windowKind: .cursorAuto),
+    ])
 }

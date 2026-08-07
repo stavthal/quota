@@ -1,6 +1,7 @@
 public enum ProviderID: String, Codable, Sendable, CaseIterable, Identifiable {
     case cursor
     case codex
+    case claude
     case copilot
     case grok
     case opencode
@@ -12,6 +13,7 @@ public enum ProviderID: String, Codable, Sendable, CaseIterable, Identifiable {
         switch self {
         case .cursor: "Cursor"
         case .codex: "ChatGPT"
+        case .claude: "Claude Code"
         case .copilot: "Copilot"
         case .grok: "Grok"
         case .opencode: "OpenCode"
@@ -23,6 +25,7 @@ public enum ProviderID: String, Codable, Sendable, CaseIterable, Identifiable {
         switch self {
         case .cursor: "CursorIcon"
         case .codex: "OpenAIIcon"
+        case .claude: "ClaudeIcon"
         case .copilot: "CopilotIcon"
         case .grok: "GrokIcon"
         case .opencode: "OpenCodeIcon"
@@ -34,7 +37,7 @@ public enum ProviderID: String, Codable, Sendable, CaseIterable, Identifiable {
     public var usesWhiteTintedIcon: Bool {
         switch self {
         case .cursor, .gemini: false
-        case .codex, .copilot, .grok, .opencode: true
+        case .claude, .codex, .copilot, .grok, .opencode: true
         }
     }
 }

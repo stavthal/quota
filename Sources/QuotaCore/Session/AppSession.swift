@@ -48,6 +48,7 @@ public final class AppSession: ObservableObject {
         let providers: [any Provider] = [
             CursorProvider(trackingEnabled: preferences.cursorTrackingEnabled),
             CodexProvider(trackingEnabled: preferences.codexTrackingEnabled),
+            ClaudeProvider(trackingEnabled: preferences.claudeTrackingEnabled),
             CopilotProvider(trackingEnabled: preferences.copilotTrackingEnabled),
             GrokProvider(trackingEnabled: preferences.grokTrackingEnabled),
             OpenCodeProvider(trackingEnabled: preferences.opencodeTrackingEnabled),
