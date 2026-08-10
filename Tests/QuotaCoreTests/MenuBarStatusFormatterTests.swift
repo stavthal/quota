@@ -107,7 +107,7 @@ import Testing
     #expect(loaded.menuBarPins == prefs.menuBarPins)
 }
 
-@Test func quotaPreferencesDropsRetiredGeminiPinsDuringLegacyDecode() throws {
+@Test func quotaPreferencesKeepsGeminiPinsDuringLegacyDecode() throws {
     let data = Data(
         #"{"menuBarPins":[{"providerID":"gemini","windowKind":"weekly"},{"providerID":"cursor","windowKind":"cursorAuto"}]}"#.utf8
     )
@@ -115,6 +115,7 @@ import Testing
     let preferences = try JSONDecoder().decode(QuotaPreferences.self, from: data)
 
     #expect(preferences.menuBarPins == [
+        MenuBarPin(providerID: .gemini, windowKind: .weekly),
         MenuBarPin(providerID: .cursor, windowKind: .cursorAuto),
     ])
 }

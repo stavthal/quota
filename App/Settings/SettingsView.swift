@@ -6,14 +6,18 @@ struct SettingsView: View {
     @ObservedObject var session: AppSession
     @State private var statusMessage: String?
     @State private var connecting: Set<ProviderID> = []
-    @State private var connectionMessages: [ProviderID: String] = [:]
 
     var body: some View {
         Form {
-            Section("Providers") {
-                ForEach(ProviderID.allCases) { id in
+            Section {
+                ForEach(session.preferences.providerOrder) { id in
                     providerBlock(id)
                 }
+                .onMove(perform: moveProviders)
+            } header: {
+                Text("Providers — use arrows or drag to reorder")
+            } footer: {
+                Text("This order is used in the popover and for pinned limits in the menu bar.")
             }
 
             statusItemSections
@@ -37,7 +41,7 @@ struct SettingsView: View {
 
             Section("About") {
                 Text(
-                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Claude Code → ~/.claude.json usage cache, Copilot → `gh` CLI, Grok → ~/.grok/auth.json, OpenCode → ~/.local/share/opencode. Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
+                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Claude Code → ~/.claude.json usage cache, Copilot → `gh` CLI, Grok → ~/.grok/auth.json, OpenCode → ~/.local/share/opencode, Gemini → Antigravity / `agy` (~/.gemini/antigravity-cli). Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -67,6 +71,8 @@ struct SettingsView: View {
         let auth = session.authStatuses[id] ?? .signedOut
         let connected = tracking && isSignedIn(auth)
         let busy = connecting.contains(id)
+        let index = session.preferences.providerOrder.firstIndex(of: id) ?? 0
+        let lastIndex = session.preferences.providerOrder.count - 1
 
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
@@ -74,6 +80,25 @@ struct SettingsView: View {
                 Text(id.displayName)
                     .font(.headline)
                 Spacer()
+                HStack(spacing: 2) {
+                    Button {
+                        moveProvider(id, by: -1)
+                    } label: {
+                        Image(systemName: "chevron.up")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(index == 0)
+                    .accessibilityLabel("Move \(id.displayName) up")
+
+                    Button {
+                        moveProvider(id, by: 1)
+                    } label: {
+                        Image(systemName: "chevron.down")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(index == lastIndex)
+                    .accessibilityLabel("Move \(id.displayName) down")
+                }
                 connectionBadge(tracking: tracking, auth: auth)
             }
 
@@ -138,13 +163,6 @@ struct SettingsView: View {
                 }
             }
 
-            if let connectionMessage = connectionMessages[id] {
-                Text(connectionMessage)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-            }
-
             if let healthError = session.lastErrors[id] {
                 Text(healthError)
                     .font(.caption2)
@@ -159,7 +177,7 @@ struct SettingsView: View {
     private var statusItemSections: some View {
         let pinCount = session.preferences.menuBarPins.count
         let atCap = pinCount >= QuotaPreferences.maxMenuBarPins
-        let pinnable = ProviderID.allCases.filter { id in
+        let pinnable = session.preferences.providerOrder.filter { id in
             session.preferences.isTrackingEnabled(for: id)
                 && !(session.snapshots[id]?.windows.isEmpty ?? true)
         }
@@ -226,7 +244,7 @@ struct SettingsView: View {
 
     private var menuBarPreviewGroups: [MenuBarStatusGroup] {
         MenuBarStatusFormatter.statusGroups(
-            pins: session.preferences.menuBarPins,
+            pins: session.preferences.orderedMenuBarPins,
             snapshots: session.snapshots
         )
     }
@@ -330,29 +348,28 @@ struct SettingsView: View {
             "Reads ~/.grok/auth.json from Grok CLI (`grok login`) — SuperGrok weekly pool."
         case .opencode:
             "Reads ~/.local/share/opencode (auth + local DB). Shows OpenCode Go or Zen, plus up to 3 highest-spend backends used inside OpenCode (e.g. OpenRouter). Go caps $12/5h · $30/wk · $60/mo."
+        case .gemini:
+            "Reads Antigravity / `agy` OAuth (~/.gemini/antigravity-cli or Antigravity IDE). Shows Gemini Models 5h + weekly pools via Cloud Code Assist."
         }
     }
 
     private func connect(_ id: ProviderID) {
         connecting.insert(id)
-        connectionMessages[id] = "Connecting \(id.displayName)…"
-        statusMessage = connectionMessages[id]
+        statusMessage = "Connecting \(id.displayName)…"
         Task {
             defer { connecting.remove(id) }
             do {
                 try await session.authenticateFromLocalApp(id)
                 if let error = session.lastErrors[id] {
-                    connectionMessages[id] = "Connected, but usage fetch failed: \(error)"
+                    statusMessage = "Connected, but usage fetch failed: \(error)"
                 } else if let snap = session.snapshots[id] {
                     let parts = snap.windows.map { "\(shortLabel(for: $0.kind)) \(Int($0.utilization * 100))%" }
-                    connectionMessages[id] = "\(id.displayName): " + parts.joined(separator: " · ")
+                    statusMessage = "\(id.displayName): " + parts.joined(separator: " · ")
                 } else {
-                    connectionMessages[id] = "\(id.displayName) connected"
+                    statusMessage = "\(id.displayName) connected"
                 }
-                statusMessage = connectionMessages[id]
             } catch {
-                connectionMessages[id] = "\(id.displayName): \(error.localizedDescription)"
-                statusMessage = connectionMessages[id]
+                statusMessage = error.localizedDescription
             }
         }
     }
@@ -367,6 +384,21 @@ struct SettingsView: View {
         case .copilotCredits: "Credits"
         case .custom: "On-demand"
         }
+    }
+
+    private func moveProviders(from source: IndexSet, to destination: Int) {
+        var preferences = session.preferences
+        var providerOrder = preferences.providerOrder
+        providerOrder.move(fromOffsets: source, toOffset: destination)
+        preferences.setProviderOrder(providerOrder)
+        Task { await session.updatePreferences(preferences) }
+    }
+
+    private func moveProvider(_ providerID: ProviderID, by offset: Int) {
+        guard let sourceIndex = session.preferences.providerOrder.firstIndex(of: providerID) else { return }
+        var preferences = session.preferences
+        guard preferences.moveProvider(from: sourceIndex, to: sourceIndex + offset) else { return }
+        Task { await session.updatePreferences(preferences) }
     }
 
     private func binding(_ keyPath: WritableKeyPath<QuotaPreferences, Bool>) -> Binding<Bool> {

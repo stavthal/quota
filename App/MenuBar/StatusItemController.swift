@@ -87,7 +87,7 @@ final class StatusItemController: NSObject {
         content.addArrangedSubview(severityIcon())
 
         let groups = MenuBarStatusFormatter.statusGroups(
-            pins: session.preferences.menuBarPins,
+            pins: session.preferences.orderedMenuBarPins,
             snapshots: session.snapshots
         )
         for group in groups {
@@ -150,7 +150,13 @@ final class StatusItemController: NSObject {
             plate.heightAnchor.constraint(equalToConstant: 16),
         ])
 
-        guard let image = NSImage(named: providerID.assetIconName) else { return plate }
+        let image: NSImage?
+        if providerID == .claude {
+            image = NSImage(systemSymbolName: "sparkles", accessibilityDescription: nil)
+        } else {
+            image = NSImage(named: providerID.assetIconName)
+        }
+        guard let image else { return plate }
         image.isTemplate = providerID.usesWhiteTintedIcon
         let imageView = NSImageView(image: image)
         imageView.imageScaling = .scaleProportionallyDown

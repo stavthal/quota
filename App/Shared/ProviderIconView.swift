@@ -1,7 +1,7 @@
 import QuotaCore
 import SwiftUI
 
-/// Provider marks on a dark plate. Template icons use a white tint; Cursor keeps its brand color.
+/// Provider marks on a dark plate. Template icons use a white tint; Cursor/Gemini keep brand color.
 struct ProviderIconView: View {
     let providerID: ProviderID
     var size: CGFloat = 22
