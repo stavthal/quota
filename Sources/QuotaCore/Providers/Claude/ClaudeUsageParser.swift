@@ -60,30 +60,19 @@ public enum ClaudeUsageParser {
 }
 
 public enum ClaudeProviderError: Error, LocalizedError, Sendable, Equatable {
-    case authFileMissing
-    case notSignedIn
-    case invalidAuthFile
+    case usageCacheMissing
+    case invalidUsageCache
     case emptyUsage
-    case httpStatus(Int)
-    case transport(String)
     case notAuthenticated
 
     public var errorDescription: String? {
         switch self {
-        case .authFileMissing:
-            "Claude Code credentials are not available to Headroom"
-        case .notSignedIn:
-            "Claude Code is not signed in"
-        case .invalidAuthFile:
-            "Claude Code credentials could not be parsed"
+        case .usageCacheMissing:
+            "Claude Code has not cached usage yet — run Claude Code, then reconnect"
+        case .invalidUsageCache:
+            "Claude Code's local usage cache could not be read"
         case .emptyUsage:
             "Claude Code returned no usage windows"
-        case .httpStatus(let code):
-            code == 401 || code == 403
-                ? "Claude Code session expired — sign in again with `claude auth login`"
-                : "Claude Code usage HTTP \(code)"
-        case .transport(let message):
-            message
         case .notAuthenticated:
             "Claude Code is not connected"
         }

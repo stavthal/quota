@@ -2,6 +2,10 @@ import Foundation
 import QuotaCore
 import Testing
 
+@Test func claudeKeepsItsBrandColorInProviderMeters() {
+    #expect(ProviderID.claude.usesWhiteTintedIcon == false)
+}
+
 @Test func claudeUsageMapsFiveHourAndWeeklyWindows() throws {
     let data = try #require(
         """

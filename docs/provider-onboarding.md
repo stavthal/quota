@@ -85,15 +85,16 @@ subscription flow, but Anthropic's public Claude Code documentation does not
 publish that call as a third-party integration API.
 
 Headroom therefore treats Claude Code as **Guarded** until Anthropic documents
-or explicitly approves this use. The adapter must use only a credential source
-the user has explicitly made available to Headroom; it must not read the
-Claude Code Keychain item, scrape browser data, or invoke Claude with a prompt
-to infer usage. If no compatible local credential source exists, the provider
-stays signed out and explains how to connect rather than guessing.
+or explicitly approves this use. The adapter reads only Claude Code's non-secret
+local `cachedUsageUtilization` record in `~/.claude.json`; it must not read the
+Claude Code Keychain item, scrape browser data, extract credentials, make a
+provider request, or invoke Claude with a prompt to infer usage. If no compatible
+local usage cache exists, the provider stays signed out and explains how to
+connect rather than guessing.
 
-Before release, confirm the installed Claude Code version, authorization terms,
-response fixture, 401/403 handling, and one manual smoke check. Remove or
-disable the adapter immediately if the compatibility check fails.
+Before release, confirm the installed Claude Code version, cache schema fixture,
+and one manual smoke check. Remove or disable the adapter immediately if the
+compatibility check fails.
 
 ## Provider intake record
 

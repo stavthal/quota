@@ -37,7 +37,7 @@ struct SettingsView: View {
 
             Section("About") {
                 Text(
-                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Claude Code → ~/.claude/.credentials.json when available, Copilot → `gh` CLI, Grok → ~/.grok/auth.json, OpenCode → ~/.local/share/opencode. Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
+                    "Headroom is local-only. Cursor → Cursor app, ChatGPT → ~/.codex/auth.json, Claude Code → ~/.claude.json usage cache, Copilot → `gh` CLI, Grok → ~/.grok/auth.json, OpenCode → ~/.local/share/opencode. Tokens are not copied into the macOS Keychain. Brand marks are for identification in this open-source tool. API-key auth for providers is on the roadmap."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -323,7 +323,7 @@ struct SettingsView: View {
         case .codex:
             "Reads ~/.codex/auth.json from Codex CLI (`codex login`)."
         case .claude:
-            "Guarded compatibility: reads ~/.claude/.credentials.json when Claude Code has made it available. It does not read the Claude Code Keychain item. See docs/provider-onboarding.md."
+            "Guarded compatibility: reads Claude Code's local ~/.claude.json usage cache. It does not read Keychain credentials or make a provider request. See docs/provider-onboarding.md."
         case .copilot:
             "Reads Copilot credits via GitHub CLI (`gh auth login`)."
         case .grok:

@@ -9,10 +9,9 @@ struct ProviderIconView: View {
     var body: some View {
         Group {
             if providerID == .claude {
-                Image(systemName: "sparkles")
+                Image(providerID.assetIconName)
                     .resizable()
-                    .renderingMode(.template)
-                    .foregroundStyle(.white)
+                    .renderingMode(.original)
                     .aspectRatio(contentMode: .fit)
             } else if providerID.usesWhiteTintedIcon {
                 Image(providerID.assetIconName)

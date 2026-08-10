@@ -33,8 +33,8 @@ public enum ProviderID: String, Codable, Sendable, CaseIterable, Identifiable {
     /// Official marks except Cursor are shown as white template icons on a dark plate.
     public var usesWhiteTintedIcon: Bool {
         switch self {
-        case .cursor: false
-        case .claude, .codex, .copilot, .grok, .opencode: true
+        case .cursor, .claude: false
+        case .codex, .copilot, .grok, .opencode: true
         }
     }
 }
