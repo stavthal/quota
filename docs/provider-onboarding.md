@@ -61,9 +61,11 @@ must never be advertised as live or relied on for release readiness.
 - **Rejected** — requires secret extraction, client impersonation, or a
   potentially prohibited OAuth flow.
 
-## Gemini / Antigravity: why it was removed
+## Gemini / Antigravity decision record
 
-The previous Gemini adapter is a rejected pattern, not a template:
+### v1: rejected pattern (removed)
+
+The original Gemini adapter was a rejected pattern, not a template:
 
 - It read OAuth material from Antigravity local state and attempted refreshes.
 - It extracted an OAuth client secret from the installed `agy` binary.
@@ -71,11 +73,47 @@ The previous Gemini adapter is a rejected pattern, not a template:
   Headroom-facing usage API.
 
 Those choices fail the authorized-source and credential-boundary criteria even
-if they work on a particular machine. Gemini can return only after Google
-provides a documented, third-party-safe quota API or explicit written approval
-for this exact local-only integration. A normal Gemini API key is not an
-alternative: API billing/quotas are not a person's Gemini subscription
-capacity.
+if they work on a particular machine. A normal Gemini API key is not an
+alternative either: API billing/quotas are not a person's Gemini subscription
+capacity. This version was removed twice — once directly, once again after a
+merge silently reintroduced it — because it never should have shipped.
+
+### v2: `agy -p "/usage"` (current)
+
+Antigravity's own CLI documents a headless usage check:
+`agy -p "/usage" --output-format json` (see
+<https://antigravity.google/docs/cli/commands/usage>). Google's own docs for
+this command say it "triggers a fresh check of your quotas on disk and from
+the backend" — the same kind of vendor-CLI-headless-mode pattern Headroom
+already uses for Copilot (`gh api /copilot_internal/user`).
+
+Verified 2026-08-11 against a real, already-authenticated `agy` session: the
+command returns clean structured JSON with no credential material —
+`status`, and `command.data.groups[].buckets[]` with a stable `id`
+(`gemini-weekly` for the Gemini Models group), `remaining_fraction` (0–1), and
+an ISO-8601 `reset_time`. Headroom reads only the `gemini-weekly` bucket; the
+`3p-weekly` bucket (Claude/GPT models routed through Antigravity) belongs to
+those models' own providers, not Gemini's.
+
+This satisfies the admission criteria a normal integration needs, not just
+the Guarded bar:
+
+- **Authorized usage source**: `agy`'s own documented `--print`/`--output-format`
+  headless mode — not a private endpoint, not a reverse-engineered contract.
+- **Local credential boundary**: Headroom shells out to the user's own
+  already-installed, already-authenticated `agy` binary and reads only its
+  stdout. It never reads, exports, copies, or persists any Antigravity
+  credential — authentication is entirely `agy`'s own concern, exactly like
+  the `gh` CLI is for Copilot.
+- **Stable quota contract**: a named, structured bucket schema with a
+  fraction and a reset timestamp.
+
+Failure semantics: `agy` not installed → `cliMissing`; a non-zero exit or
+non-`SUCCESS` status → not authenticated (fails closed, no fabricated data);
+malformed JSON → `invalidResponse`. Before relying on this further, revalidate
+against a signed-out `agy` session and against an `agy` CLI version bump —
+this is Guarded, not Supported, until Google documents `/usage` as a
+third-party-facing contract rather than a human-facing CLI panel.
 
 ## Claude Code decision record
 

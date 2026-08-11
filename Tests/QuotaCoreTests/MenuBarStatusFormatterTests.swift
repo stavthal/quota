@@ -109,7 +109,7 @@ import Testing
 
 @Test func quotaPreferencesDropsRetiredProviderPinsDuringLegacyDecode() throws {
     let data = Data(
-        #"{"menuBarPins":[{"providerID":"gemini","windowKind":"weekly"},{"providerID":"cursor","windowKind":"cursorAuto"}]}"#.utf8
+        #"{"menuBarPins":[{"providerID":"copilotLegacy","windowKind":"weekly"},{"providerID":"cursor","windowKind":"cursorAuto"}]}"#.utf8
     )
 
     let preferences = try JSONDecoder().decode(QuotaPreferences.self, from: data)

@@ -45,7 +45,7 @@ import Testing
     try await store.savePreferences(prefs)
     let loaded = try await store.loadPreferences()
 
-    #expect(loaded.providerOrder == [.grok, .cursor, .codex, .claude, .copilot, .opencode])
+    #expect(loaded.providerOrder == [.grok, .cursor, .codex, .claude, .copilot, .opencode, .gemini])
     #expect(loaded.orderedMenuBarPins.map(\.providerID) == [.grok, .cursor])
 }
 
