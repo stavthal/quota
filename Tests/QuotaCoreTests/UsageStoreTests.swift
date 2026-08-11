@@ -36,29 +36,29 @@ import Testing
 @Test func usageStorePersistsProviderOrderAndUsesItForMenuBarPins() async throws {
     let store = try UsageStore.inMemory()
     var prefs = QuotaPreferences.defaults
-    prefs.setProviderOrder([.gemini, .cursor])
+    prefs.setProviderOrder([.grok, .cursor])
     prefs.menuBarPins = [
         MenuBarPin(providerID: .cursor, windowKind: .cursorAuto),
-        MenuBarPin(providerID: .gemini, windowKind: .fiveHour),
+        MenuBarPin(providerID: .grok, windowKind: .fiveHour),
     ]
 
     try await store.savePreferences(prefs)
     let loaded = try await store.loadPreferences()
 
-    #expect(loaded.providerOrder == [.gemini, .cursor, .codex, .claude, .copilot, .grok, .opencode])
-    #expect(loaded.orderedMenuBarPins.map(\.providerID) == [.gemini, .cursor])
+    #expect(loaded.providerOrder == [.grok, .cursor, .codex, .claude, .copilot, .opencode])
+    #expect(loaded.orderedMenuBarPins.map(\.providerID) == [.grok, .cursor])
 }
 
 @Test func preferencesMoveProviderReordersPinnedMenuBarGroups() {
     var preferences = QuotaPreferences.defaults
     preferences.menuBarPins = [
         MenuBarPin(providerID: .cursor, windowKind: .cursorAuto),
-        MenuBarPin(providerID: .gemini, windowKind: .weekly),
+        MenuBarPin(providerID: .opencode, windowKind: .weekly),
     ]
 
-    let didMove = preferences.moveProvider(from: 6, to: 0)
+    let didMove = preferences.moveProvider(from: 5, to: 0)
 
     #expect(didMove)
-    #expect(preferences.providerOrder.first == .gemini)
-    #expect(preferences.orderedMenuBarPins.map(\.providerID) == [.gemini, .cursor])
+    #expect(preferences.providerOrder.first == .opencode)
+    #expect(preferences.orderedMenuBarPins.map(\.providerID) == [.opencode, .cursor])
 }

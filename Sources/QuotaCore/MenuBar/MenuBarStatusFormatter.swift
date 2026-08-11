@@ -61,7 +61,6 @@ public enum MenuBarStatusFormatter {
         case .copilot: "Cop"
         case .grok: "Grk"
         case .opencode: "OC"
-        case .gemini: "Gem"
         }
     }
 

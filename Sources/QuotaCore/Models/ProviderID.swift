@@ -5,7 +5,6 @@ public enum ProviderID: String, Codable, Sendable, CaseIterable, Identifiable {
     case copilot
     case grok
     case opencode
-    case gemini
 
     public var id: String { rawValue }
 
@@ -17,7 +16,6 @@ public enum ProviderID: String, Codable, Sendable, CaseIterable, Identifiable {
         case .copilot: "Copilot"
         case .grok: "Grok"
         case .opencode: "OpenCode"
-        case .gemini: "Gemini"
         }
     }
 
@@ -29,14 +27,13 @@ public enum ProviderID: String, Codable, Sendable, CaseIterable, Identifiable {
         case .copilot: "CopilotIcon"
         case .grok: "GrokIcon"
         case .opencode: "OpenCodeIcon"
-        case .gemini: "GeminiIcon"
         }
     }
 
-    /// Official marks except Cursor and Gemini are shown as white template icons on a dark plate.
+    /// Official marks except Cursor are shown as white template icons on a dark plate.
     public var usesWhiteTintedIcon: Bool {
         switch self {
-        case .cursor, .claude, .gemini: false
+        case .cursor, .claude: false
         case .codex, .copilot, .grok, .opencode: true
         }
     }
